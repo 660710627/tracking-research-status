@@ -4,20 +4,39 @@ info:
   version: 1.0.0
   description: |
     API contract for the Tracking Research Status MVP.
-    The API has no authentication, role-specific views, research ID, or status field.
 
-    Every error response uses `{"error":{"code":"...","message":"..."}}`.
-    Unknown routes return `404 ROUTE_NOT_FOUND`; unsupported methods on known routes
-    return `405 METHOD_NOT_ALLOWED`.
+    The API has no authentication or role-specific views. Every caller sees the
+    same research list. UI pages for viewing or changing status and process are
+    outside MVP scope, but the status and process API operations are included.
+
+    Every error response uses `{"error":{"code":"...","message":"..."}}` and
+    does not expose stack traces or database details. Unknown routes return
+    `404 ROUTE_NOT_FOUND`; unsupported methods on known routes return
+    `405 METHOD_NOT_ALLOWED`.
+
+    POST, PUT, and PATCH accept one JSON object only. Content-Type must be
+    application/json, may include parameters such as charset=utf-8, and is
+    matched case-insensitively. Duplicate keys, unknown fields, and non-object
+    top-level JSON values are rejected. The raw request body limit is 64 KiB
+    (65,536 bytes).
 security: []
 servers:
   - url: /
 
+tags:
+  - name: Health
+    description: Service and database availability.
+  - name: Researches
+    description: Research records, status, and process.
+
 paths:
   /health:
     get:
+      tags:
+        - Health
       operationId: getHealth
-      summary: Check service and database availability
+      summary: Check service availability
+      description: Checks whether the service and its database are available.
       responses:
         "200":
           description: The service and database are available.
@@ -32,14 +51,18 @@ paths:
 
   /api/v1/researches:
     get:
+      tags:
+        - Researches
       operationId: listResearches
       summary: List all researches
       description: |
-        Returns the shared research list sorted by title in ascending order.
-        This operation accepts neither a request body nor query parameters.
+        Returns the shared research list sorted by title ascending and then by
+        ID ascending when titles are equal. An empty database returns `[]`.
+        This operation accepts neither a non-empty request body nor query
+        parameters.
       responses:
         "200":
-          description: The complete research list; an empty database returns `[]`.
+          description: The complete research list.
           content:
             application/json:
               schema:
@@ -54,29 +77,38 @@ paths:
           $ref: "#/components/responses/InternalError"
 
     post:
+      tags:
+        - Researches
       operationId: createResearch
       summary: Create a research
       description: |
-        Accepts exactly one JSON object with only `title` and `description`.
-        Unicode whitespace is trimmed from both values before validation and storage.
-        Duplicate JSON keys are rejected. The raw request body limit is 64 KiB
-        (65,536 bytes). Title uniqueness is case-sensitive.
+        Creates one research atomically. The server generates a positive,
+        immutable, unique ID that is never reused after deletion. Status starts
+        at "กำลังดำเนินการ" and process starts at "สัญญาโครงการ".
+
+        continuationOfId is required. A root research sends null; a continuation
+        sends the positive ID of an existing research. The referenced research
+        may already be completed or terminated. A root title cannot duplicate
+        any existing trimmed title. Continuations may use duplicate titles.
+        Title comparison is case-sensitive after Unicode trimming.
       requestBody:
         required: true
         x-max-body-bytes: 65536
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ResearchInput"
+              $ref: "#/components/schemas/CreateResearchRequest"
       responses:
         "201":
-          description: The research was stored successfully.
+          description: The research was created and persisted successfully.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
         "400":
           $ref: "#/components/responses/InvalidJson"
+        "404":
+          $ref: "#/components/responses/ContinuationNotFound"
         "409":
           $ref: "#/components/responses/TitleAlreadyExists"
         "413":
@@ -88,29 +120,31 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/researches/{title}:
+  /api/v1/researches/{id}:
     parameters:
-      - $ref: "#/components/parameters/CurrentTitle"
+      - $ref: "#/components/parameters/ResearchId"
 
     put:
+      tags:
+        - Researches
       operationId: updateResearch
-      summary: Replace a research
+      summary: Replace research details
       description: |
-        Replaces both fields of the research identified by its current, URL-encoded
-        title. The request title may be unchanged or changed to another unique title.
-        The replacement is atomic. The request-body parsing, trimming, field
-        validation, duplicate-key rejection, and 64 KiB raw-body limit are the same
-        as for creation.
+        Atomically replaces title and description only. ID, continuationOfId,
+        status, and process remain unchanged. A root may retain its current title
+        while changing description even when a continuation has the same title.
+        If a root changes its title, the new trimmed title cannot duplicate any
+        existing research title. A continuation may change to a duplicate title.
       requestBody:
         required: true
         x-max-body-bytes: 65536
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ResearchInput"
+              $ref: "#/components/schemas/UpdateResearchRequest"
       responses:
         "200":
-          description: The research was replaced successfully.
+          description: The research details were replaced successfully.
           content:
             application/json:
               schema:
@@ -131,18 +165,118 @@ paths:
           $ref: "#/components/responses/InternalError"
 
     delete:
+      tags:
+        - Researches
       operationId: deleteResearch
       summary: Delete a research
       description: |
-        Deletes the research identified by its current, URL-encoded title.
-        This operation accepts neither a request body nor query parameters.
+        Deletes the research identified by ID. The deleted ID is never reused.
+        A research referenced through continuationOfId cannot be deleted. This
+        operation accepts neither a non-empty request body nor query parameters.
       responses:
         "204":
-          description: The research was deleted successfully. The response has no body.
+          description: The research was deleted successfully; the response has no body.
         "400":
           $ref: "#/components/responses/InvalidRequestBody"
         "404":
           $ref: "#/components/responses/ResearchNotFound"
+        "409":
+          $ref: "#/components/responses/ResearchHasContinuations"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/researches/{id}/status:
+    parameters:
+      - $ref: "#/components/parameters/ResearchId"
+
+    patch:
+      tags:
+        - Researches
+      operationId: updateResearchStatus
+      summary: Advance research status
+      description: |
+        Updates status atomically from the latest persisted value. A normal
+        status may move only to the next normal status, or jump directly to
+        "โครงการเสร็จสิ้น" or "ยุติโครงการ". Normal statuses cannot be skipped
+        or reversed. Sending the current status again is idempotent and returns
+        200, including the same terminal status.
+
+        Both terminal statuses end the project. Entering a terminal status keeps
+        the current process unchanged and does not mark it complete. After that,
+        status cannot change to another value and process cannot advance.
+      requestBody:
+        required: true
+        x-max-body-bytes: 65536
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
+      responses:
+        "200":
+          description: Status was advanced or the idempotent value was accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Research"
+        "400":
+          $ref: "#/components/responses/InvalidJson"
+        "404":
+          $ref: "#/components/responses/ResearchNotFound"
+        "409":
+          $ref: "#/components/responses/StatusConflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/researches/{id}/process:
+    parameters:
+      - $ref: "#/components/parameters/ResearchId"
+
+    patch:
+      tags:
+        - Researches
+      operationId: updateResearchProcess
+      summary: Advance research process
+      description: |
+        Updates the single current process atomically from the latest persisted
+        value. Process may move only to the next value; it cannot skip, reverse,
+        or advance beyond "การปิดบัญชีธนาคาร". Sending the current process again
+        is idempotent and returns 200.
+
+        Advancing process does not change status. Completing the final process
+        does not automatically complete the project. Process cannot be changed
+        after status becomes "โครงการเสร็จสิ้น" or "ยุติโครงการ".
+      requestBody:
+        required: true
+        x-max-body-bytes: 65536
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProcessRequest"
+      responses:
+        "200":
+          description: Process was advanced or the idempotent value was accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Research"
+        "400":
+          $ref: "#/components/responses/InvalidJson"
+        "404":
+          $ref: "#/components/responses/ResearchNotFound"
+        "409":
+          $ref: "#/components/responses/ProcessConflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/ValidationError"
         "500":
@@ -150,13 +284,13 @@ paths:
 
 components:
   parameters:
-    CurrentTitle:
-      name: title
+    ResearchId:
+      name: id
       in: path
       required: true
-      description: The current research title, encoded as a URL path segment.
+      description: Positive, immutable server-generated research ID.
       schema:
-        $ref: "#/components/schemas/ResearchTitle"
+        $ref: "#/components/schemas/ResearchId"
 
   schemas:
     HealthResponse:
@@ -173,15 +307,42 @@ components:
       type: object
       additionalProperties: false
       required:
+        - id
         - title
         - description
+        - continuationOfId
+        - status
+        - process
+      properties:
+        id:
+          $ref: "#/components/schemas/ResearchId"
+        title:
+          $ref: "#/components/schemas/ResearchTitle"
+        description:
+          $ref: "#/components/schemas/ResearchDescription"
+        continuationOfId:
+          $ref: "#/components/schemas/NullableResearchId"
+        status:
+          $ref: "#/components/schemas/ResearchStatus"
+        process:
+          $ref: "#/components/schemas/ResearchProcess"
+
+    CreateResearchRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - description
+        - continuationOfId
       properties:
         title:
           $ref: "#/components/schemas/ResearchTitle"
         description:
           $ref: "#/components/schemas/ResearchDescription"
+        continuationOfId:
+          $ref: "#/components/schemas/NullableResearchId"
 
-    ResearchInput:
+    UpdateResearchRequest:
       type: object
       additionalProperties: false
       required:
@@ -193,14 +354,49 @@ components:
         description:
           $ref: "#/components/schemas/ResearchDescription"
 
+    UpdateStatusRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/ResearchStatus"
+
+    UpdateProcessRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - process
+      properties:
+        process:
+          $ref: "#/components/schemas/ResearchProcess"
+
+    ResearchId:
+      type: integer
+      format: int64
+      minimum: 1
+
+    NullableResearchId:
+      type:
+        - integer
+        - "null"
+      format: int64
+      minimum: 1
+      description: |
+        null identifies a root research. A positive integer identifies an
+        existing parent research, including a completed or terminated parent.
+
     ResearchTitle:
       type: string
       minLength: 1
       maxLength: 200
       pattern: '^[^/\x00-\x1F\x7F]+$'
       description: |
-        A case-sensitive unique title. Unicode whitespace is trimmed before
-        validation. Newline, tab, NUL, control characters, and `/` are forbidden.
+        Unicode whitespace is trimmed before validation and storage. Newline,
+        tab, NUL, other control characters, and `/` are forbidden. Duplicate
+        comparison is case-sensitive after trimming; continuation rules decide
+        whether a duplicate is permitted.
 
     ResearchDescription:
       type: string
@@ -208,8 +404,50 @@ components:
       maxLength: 5000
       pattern: '^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+$'
       description: |
-        Unicode whitespace is trimmed before validation. Newline and tab are
-        allowed; NUL and other control characters are forbidden.
+        Unicode whitespace is trimmed before validation and storage. Newline and
+        tab are allowed; NUL and other control characters are forbidden.
+
+    ResearchStatus:
+      type: string
+      enum:
+        - กำลังดำเนินการ
+        - กำลังดำเนินการ (ขยายเวลาครั้งที่ 1)
+        - กำลังดำเนินการ (ขยายเวลาครั้งที่ 2)
+        - กำลังดำเนินการ (ขยายเวลามากกว่า 2 ครั้ง)
+        - โครงการเสร็จสิ้น
+        - ยุติโครงการ
+
+    ResearchProcess:
+      type: string
+      enum:
+        - สัญญาโครงการ
+        - บันทึกข้อตกลง
+        - เปิดบัญชีธนาคาร
+        - การเบิกจ่ายเงิน
+        - การจัดสรรค่าธรรมเนียม
+        - การติดตามส่งรายงาน
+        - รายงานสรุปการใช้เงิน
+        - การปิดบัญชีธนาคาร
+
+    ErrorCode:
+      type: string
+      enum:
+        - CONTINUATION_NOT_FOUND
+        - INTERNAL_ERROR
+        - INVALID_JSON
+        - INVALID_PROCESS_TRANSITION
+        - INVALID_REQUEST_BODY
+        - INVALID_STATUS_TRANSITION
+        - METHOD_NOT_ALLOWED
+        - PAYLOAD_TOO_LARGE
+        - PROJECT_ALREADY_ENDED
+        - RESEARCH_HAS_CONTINUATIONS
+        - RESEARCH_NOT_FOUND
+        - ROUTE_NOT_FOUND
+        - SERVICE_UNAVAILABLE
+        - TITLE_ALREADY_EXISTS
+        - UNSUPPORTED_MEDIA_TYPE
+        - VALIDATION_ERROR
 
     ErrorResponse:
       type: object
@@ -225,25 +463,38 @@ components:
             - message
           properties:
             code:
-              type: string
-              enum:
-                - INVALID_JSON
-                - INVALID_REQUEST_BODY
-                - INTERNAL_ERROR
-                - METHOD_NOT_ALLOWED
-                - PAYLOAD_TOO_LARGE
-                - RESEARCH_NOT_FOUND
-                - ROUTE_NOT_FOUND
-                - SERVICE_UNAVAILABLE
-                - TITLE_ALREADY_EXISTS
-                - UNSUPPORTED_MEDIA_TYPE
-                - VALIDATION_ERROR
+              $ref: "#/components/schemas/ErrorCode"
             message:
               type: string
+              minLength: 1
 
   responses:
+    ContinuationNotFound:
+      description: continuationOfId does not reference an existing research.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: CONTINUATION_NOT_FOUND
+              message: Continuation research was not found.
+
+    InternalError:
+      description: An unexpected database or internal error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: An unexpected internal error occurred.
+
     InvalidJson:
-      description: The body is empty, malformed, or contains more than one JSON value.
+      description: |
+        The body is empty or whitespace-only, malformed, has trailing data, or
+        contains more than one JSON value.
       content:
         application/json:
           schema:
@@ -264,17 +515,6 @@ components:
               code: INVALID_REQUEST_BODY
               message: This operation does not accept a request body.
 
-    InternalError:
-      description: An unexpected internal error occurred.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-          example:
-            error:
-              code: INTERNAL_ERROR
-              message: An unexpected internal error occurred.
-
     PayloadTooLarge:
       description: The raw request body exceeds 64 KiB (65,536 bytes).
       content:
@@ -286,8 +526,39 @@ components:
               code: PAYLOAD_TOO_LARGE
               message: Request body exceeds 64 KiB.
 
+    ProcessConflict:
+      description: |
+        The requested process transition skips, reverses, advances beyond the
+        final process, or the project has already ended.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            invalidTransition:
+              value:
+                error:
+                  code: INVALID_PROCESS_TRANSITION
+                  message: The requested process transition is invalid.
+            projectEnded:
+              value:
+                error:
+                  code: PROJECT_ALREADY_ENDED
+                  message: The project has already ended.
+
+    ResearchHasContinuations:
+      description: The research is still referenced by one or more continuations.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: RESEARCH_HAS_CONTINUATIONS
+              message: Research has continuations and cannot be deleted.
+
     ResearchNotFound:
-      description: No research has the supplied current title.
+      description: No research has the supplied positive ID.
       content:
         application/json:
           schema:
@@ -308,8 +579,28 @@ components:
               code: SERVICE_UNAVAILABLE
               message: Service is temporarily unavailable.
 
+    StatusConflict:
+      description: |
+        The requested status transition skips or reverses a normal status, or
+        attempts to change a project that has already ended.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            invalidTransition:
+              value:
+                error:
+                  code: INVALID_STATUS_TRANSITION
+                  message: The requested status transition is invalid.
+            projectEnded:
+              value:
+                error:
+                  code: PROJECT_ALREADY_ENDED
+                  message: The project has already ended.
+
     TitleAlreadyExists:
-      description: Another research has the same case-sensitive, trimmed title.
+      description: A root research would duplicate an existing case-sensitive trimmed title.
       content:
         application/json:
           schema:
@@ -331,7 +622,9 @@ components:
               message: Content-Type must be application/json.
 
     ValidationError:
-      description: The request fields, path parameter, or query parameters are invalid.
+      description: |
+        The path ID, request object, fields, duplicate keys, unknown fields, or
+        query parameters violate this contract.
       content:
         application/json:
           schema:

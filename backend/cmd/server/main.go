@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/660710627/my-research/internal/db"
@@ -19,10 +20,21 @@ func main() {
 			log.Printf("close database: %v", err)
 		}
 	}()
+	if err := db.Initialize(context.Background(), database); err != nil {
+		log.Fatal(err)
+	}
 
 	healthRepository := repo.NewHealthRepository(database)
 	healthService := service.NewHealthService(healthRepository)
-	router := handler.NewRouter(handler.Dependencies{Health: healthService})
+	researchRepository := repo.NewResearchRepository(database)
+	researchService := service.NewResearchService(researchRepository)
+	researchListService := service.NewResearchListService(researchRepository)
+	researchUpdateService := service.NewResearchUpdateService(researchRepository)
+	researchDeleteService := service.NewResearchDeleteService(researchRepository)
+	router := handler.NewRouter(handler.Dependencies{
+		Health: healthService, Researches: researchService, ResearchList: researchListService,
+		ResearchUpdate: researchUpdateService, ResearchDelete: researchDeleteService,
+	})
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatal(err)

@@ -1,43 +1,55 @@
-# PLAN Tracking-Research-Status MVP
+# PLAN: Tracking Research Status MVP
 
 ## ขอบเขต
-- รองรับ health check และการเพิ่ม ดูรายการ แก้ไข และลบงานวิจัยตาม `SPEC.md`
-- งานวิจัยมีเฉพาะ `title` และ `description`; `title` ใช้ระบุรายการ
-- ไม่รวม ID, authentication, การแยกสิทธิ์ตามบทบาท, การปรับสถานะ และ deployment
+
+- รองรับ health check และ CRUD งานวิจัยด้วย `id` ที่ระบบสร้างและเปลี่ยนไม่ได้
+- ข้อมูลงานวิจัยประกอบด้วย `id`, `title`, `description`, `continuationOfId`, `status` และ `process`
+- รองรับงานวิจัยต่อเนื่อง ชื่อซ้ำตามกฎใน SPEC การปรับสถานะ และการเดินกระบวนการไปข้างหน้า
+- ไม่รวม authentication, notification, deployment และหน้า UI สำหรับดูหรือปรับสถานะและกระบวนการ
 
 ## Contract first
-- จัดทำ `docs/openapi.yaml` ให้ตรงกับ endpoint, schema, status และ error code ใน `SPEC.md` ก่อน implementation
-- ใช้ docs/openapi.yaml เป็นแหล่งความจริงเดียวและสร้าง typed API client สำหรับ frontend; ห้ามแก้ generated code ด้วยมือ
-- หาก contract หรือ SPEC กำกวม ให้หยุดและถามก่อนเปลี่ยนขอบเขต
+
+- ปรับ API Contract และ SQL ใน SPEC ที่ยังไม่ตรงกับ AC ล่าสุดก่อนเริ่มโค้ด
+- ทำ `docs/openapi.yaml` ให้ครอบคลุม endpoint, schema, status และ error code ตาม SPEC และใช้เป็นแหล่งความจริงเดียวของ API
+- สร้าง typed API client จาก OpenAPI ใหม่เมื่อ contract เปลี่ยน และห้ามแก้ไฟล์ generated ด้วยมือ
 
 ## Backend
-- `db`: เปิด SQLite `library.db` และสร้าง schema พร้อม `NOT NULL`, validation constraints และ `UNIQUE(title)`
-- `repo`: มีเฉพาะ SQL สำหรับเพิ่ม เรียงรายการตาม title ค้นหา แก้ไขแบบ transaction และลบ
-- `service`: trim/validate ข้อมูล บังคับกฎ title ไม่ซ้ำ และคืน typed errors ตามกฎธุรกิจ
-- `handler`: จัดการเฉพาะ HTTP เช่น Content-Type, body limit, JSON, path/query และแปลง typed errors เป็น status กับ error code ตาม SPEC
-- `cmd/server`: ประกอบ dependencies, routes และเริ่ม Gin โดยไม่ใส่ business rules
-- Error response ทั้งระบบใช้ `{"error":{"code":"...","message":"..."}}`
+
+- **Gin handler:** รับผิดชอบเฉพาะ HTTP เช่น path/query, content type, จำกัดขนาด body, JSON decoding และแปลง typed error เป็น response
+- **Service:** ตรวจ validation และกฎธุรกิจทั้งหมด เช่น immutable ID/continuation, ชื่อซ้ำ, การลบ parent, status transition, process transition และ terminal lock
+- **Repo:** รับผิดชอบเฉพาะ SQL, transaction, atomic update และแปลงข้อผิดพลาดจากฐานข้อมูลเป็น typed persistence error
+- **SQLite:** บังคับ unique/non-reused ID, foreign key, delete restriction, enum และ invariant สำคัญด้วย constraint/index/trigger โดยเปิด foreign keys ทุก connection
+- การสร้าง แก้ไข ลบ และ transition ต้อง atomic และปลอดภัยเมื่อมี request พร้อมกัน
 
 ## Frontend
-- ใช้ flow `pages → components → generated typed API client`
-- Pages ควบคุม flow การโหลดรายการ เพิ่ม แก้ไข และลบ; components รับข้อมูลและ events ผ่าน typed props
-- แสดง loading, empty, success และ error state โดยอ้างอิง error code จาก contract
-- ห้าม pages หรือ components เรียก `fetch` โดยตรง
+
+- โครงสร้างเป็น React pages → components → generated typed API client
+- หน้า CRUD ใช้ `id` ระบุรายการ แม้ชื่อซ้ำกันได้ และแสดง loading, error, empty และ success state
+- component ห้ามเรียก `fetch` โดยตรง และห้ามสร้าง endpoint นอก OpenAPI
+- ยังไม่สร้างหน้าดูหรือปรับ status/process ตาม Out of scope ของ MVP
+
+## Error handling
+
+- Repo ส่ง typed persistence error ให้ service แปลงเป็น typed domain error
+- Handler map domain error เป็น HTTP status และ error code ตาม SPEC ด้วย response format เดียวกัน
+- ไม่ส่งรายละเอียด SQL หรือ internal error ให้ client
 
 ## Testing
-- เขียน test ก่อนหรือพร้อม implementation และครอบคลุม success/error ทุกกรณีใน SPEC
-- Database/repo test ใช้ SQLite ใหม่ใน `t.TempDir()` และหนึ่งฐานข้อมูลต่อหนึ่ง test; ทดสอบ constraints, sorting, transaction และ concurrent title conflict
-- Service test ครอบคลุม trim, validation, duplicate title, update และ delete rules
-- Handler test ใช้ `go test` กับ `net/http/httptest` ครบทุก endpoint, status, headers และ error format
-- Frontend ตรวจ typed client integration, ESLint และ TypeScript/Vite build
 
-## ลำดับงาน
-1. ยืนยัน `docs/openapi.yaml` และ generated client contract
-2. สร้าง schema และ repo พร้อม test
-3. สร้าง service และ typed errors พร้อม test
-4. สร้าง Gin handlers และ routes พร้อม `httptest`
-5. ประกอบ server และตรวจ backend tests/lint/security
-6. สร้าง frontend pages/components ผ่าน generated client
-7. ตรวจ frontend lint/build และทดสอบ flow ตาม acceptance criteria
+- แต่ละ slice เขียน test ให้แดงและครอบ AC ของ slice ก่อนเขียน implementation
+- ใช้ `go test`, `httptest` และ SQLite จริง โดยใช้ `t.TempDir()` และฐานข้อมูลใหม่หนึ่งไฟล์ต่อหนึ่ง test
+- Repo tests ครอบคลุม constraint, foreign key, ID ไม่ถูกนำกลับมาใช้, transaction และ concurrency
+- Service tests ครอบคลุม validation, continuation/title rules และ transition matrix ของ status/process
+- Handler tests ครอบคลุม request validation, response body, HTTP status และ error code ทุกกรณีใน SPEC
+- Frontend ตรวจ typed-client integration และ E2E checklist สำหรับ loading, error, empty และ success
 
-ดำเนินงานทีละหนึ่ง task ตาม `docs/TASKS.md` และไม่ทำเกินขอบเขต task
+## ลำดับดำเนินงาน
+
+1. ทำ API Contract, SQL ใน SPEC และ `docs/openapi.yaml` ให้ตรงกับ AC ล่าสุด
+2. ทำ walking skeleton และตั้งค่า generated typed API client
+3. ทำ schema/repo โดยเขียน test ก่อน implementation
+4. ทำ CRUD และ continuation ทีละ slice โดยเขียน test ก่อน implementation
+5. ทำ status transition โดยเขียน test ก่อน implementation
+6. ทำ process transition โดยเขียน test ก่อน implementation
+7. ทำหน้า CRUD และ UI states ผ่าน generated client
+8. รัน quality gates, CI และ cross-agent review

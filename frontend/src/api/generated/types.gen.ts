@@ -9,40 +9,75 @@ export type HealthResponse = {
 };
 
 export type Research = {
+    id: ResearchId;
+    title: ResearchTitle;
+    description: ResearchDescription;
+    continuationOfId: NullableResearchId;
+    status: ResearchStatus;
+    process: ResearchProcess;
+};
+
+export type CreateResearchRequest = {
+    title: ResearchTitle;
+    description: ResearchDescription;
+    continuationOfId: NullableResearchId;
+};
+
+export type UpdateResearchRequest = {
     title: ResearchTitle;
     description: ResearchDescription;
 };
 
-export type ResearchInput = {
-    title: ResearchTitle;
-    description: ResearchDescription;
+export type UpdateStatusRequest = {
+    status: ResearchStatus;
 };
+
+export type UpdateProcessRequest = {
+    process: ResearchProcess;
+};
+
+export type ResearchId = number;
 
 /**
- * A case-sensitive unique title. Unicode whitespace is trimmed before
- * validation. Newline, tab, NUL, control characters, and `/` are forbidden.
+ * null identifies a root research. A positive integer identifies an
+ * existing parent research, including a completed or terminated parent.
+ *
+ */
+export type NullableResearchId = number | null;
+
+/**
+ * Unicode whitespace is trimmed before validation and storage. Newline,
+ * tab, NUL, other control characters, and `/` are forbidden. Duplicate
+ * comparison is case-sensitive after trimming; continuation rules decide
+ * whether a duplicate is permitted.
  *
  */
 export type ResearchTitle = string;
 
 /**
- * Unicode whitespace is trimmed before validation. Newline and tab are
- * allowed; NUL and other control characters are forbidden.
+ * Unicode whitespace is trimmed before validation and storage. Newline and
+ * tab are allowed; NUL and other control characters are forbidden.
  *
  */
 export type ResearchDescription = string;
 
+export type ResearchStatus = 'กำลังดำเนินการ' | 'กำลังดำเนินการ (ขยายเวลาครั้งที่ 1)' | 'กำลังดำเนินการ (ขยายเวลาครั้งที่ 2)' | 'กำลังดำเนินการ (ขยายเวลามากกว่า 2 ครั้ง)' | 'โครงการเสร็จสิ้น' | 'ยุติโครงการ';
+
+export type ResearchProcess = 'สัญญาโครงการ' | 'บันทึกข้อตกลง' | 'เปิดบัญชีธนาคาร' | 'การเบิกจ่ายเงิน' | 'การจัดสรรค่าธรรมเนียม' | 'การติดตามส่งรายงาน' | 'รายงานสรุปการใช้เงิน' | 'การปิดบัญชีธนาคาร';
+
+export type ErrorCode = 'CONTINUATION_NOT_FOUND' | 'INTERNAL_ERROR' | 'INVALID_JSON' | 'INVALID_PROCESS_TRANSITION' | 'INVALID_REQUEST_BODY' | 'INVALID_STATUS_TRANSITION' | 'METHOD_NOT_ALLOWED' | 'PAYLOAD_TOO_LARGE' | 'PROJECT_ALREADY_ENDED' | 'RESEARCH_HAS_CONTINUATIONS' | 'RESEARCH_NOT_FOUND' | 'ROUTE_NOT_FOUND' | 'SERVICE_UNAVAILABLE' | 'TITLE_ALREADY_EXISTS' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_ERROR';
+
 export type ErrorResponse = {
     error: {
-        code: 'INVALID_JSON' | 'INVALID_REQUEST_BODY' | 'INTERNAL_ERROR' | 'METHOD_NOT_ALLOWED' | 'PAYLOAD_TOO_LARGE' | 'RESEARCH_NOT_FOUND' | 'ROUTE_NOT_FOUND' | 'SERVICE_UNAVAILABLE' | 'TITLE_ALREADY_EXISTS' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_ERROR';
+        code: ErrorCode;
         message: string;
     };
 };
 
 /**
- * The current research title, encoded as a URL path segment.
+ * Positive, immutable server-generated research ID.
  */
-export type CurrentTitle = ResearchTitle;
+export type ResearchId2 = ResearchId;
 
 export type GetHealthData = {
     body?: never;
@@ -53,7 +88,7 @@ export type GetHealthData = {
 
 export type GetHealthErrors = {
     /**
-     * An unexpected internal error occurred.
+     * An unexpected database or internal error occurred.
      */
     500: ErrorResponse;
     /**
@@ -86,11 +121,13 @@ export type ListResearchesErrors = {
      */
     400: ErrorResponse;
     /**
-     * The request fields, path parameter, or query parameters are invalid.
+     * The path ID, request object, fields, duplicate keys, unknown fields, or
+     * query parameters violate this contract.
+     *
      */
     422: ErrorResponse;
     /**
-     * An unexpected internal error occurred.
+     * An unexpected database or internal error occurred.
      */
     500: ErrorResponse;
 };
@@ -99,7 +136,7 @@ export type ListResearchesError = ListResearchesErrors[keyof ListResearchesError
 
 export type ListResearchesResponses = {
     /**
-     * The complete research list; an empty database returns `[]`.
+     * The complete research list.
      */
     200: Array<Research>;
 };
@@ -107,7 +144,7 @@ export type ListResearchesResponses = {
 export type ListResearchesResponse = ListResearchesResponses[keyof ListResearchesResponses];
 
 export type CreateResearchData = {
-    body: ResearchInput;
+    body: CreateResearchRequest;
     path?: never;
     query?: never;
     url: '/api/v1/researches';
@@ -115,11 +152,17 @@ export type CreateResearchData = {
 
 export type CreateResearchErrors = {
     /**
-     * The body is empty, malformed, or contains more than one JSON value.
+     * The body is empty or whitespace-only, malformed, has trailing data, or
+     * contains more than one JSON value.
+     *
      */
     400: ErrorResponse;
     /**
-     * Another research has the same case-sensitive, trimmed title.
+     * continuationOfId does not reference an existing research.
+     */
+    404: ErrorResponse;
+    /**
+     * A root research would duplicate an existing case-sensitive trimmed title.
      */
     409: ErrorResponse;
     /**
@@ -131,11 +174,13 @@ export type CreateResearchErrors = {
      */
     415: ErrorResponse;
     /**
-     * The request fields, path parameter, or query parameters are invalid.
+     * The path ID, request object, fields, duplicate keys, unknown fields, or
+     * query parameters violate this contract.
+     *
      */
     422: ErrorResponse;
     /**
-     * An unexpected internal error occurred.
+     * An unexpected database or internal error occurred.
      */
     500: ErrorResponse;
 };
@@ -144,7 +189,7 @@ export type CreateResearchError = CreateResearchErrors[keyof CreateResearchError
 
 export type CreateResearchResponses = {
     /**
-     * The research was stored successfully.
+     * The research was created and persisted successfully.
      */
     201: Research;
 };
@@ -155,12 +200,12 @@ export type DeleteResearchData = {
     body?: never;
     path: {
         /**
-         * The current research title, encoded as a URL path segment.
+         * Positive, immutable server-generated research ID.
          */
-        title: ResearchTitle;
+        id: ResearchId;
     };
     query?: never;
-    url: '/api/v1/researches/{title}';
+    url: '/api/v1/researches/{id}';
 };
 
 export type DeleteResearchErrors = {
@@ -169,15 +214,21 @@ export type DeleteResearchErrors = {
      */
     400: ErrorResponse;
     /**
-     * No research has the supplied current title.
+     * No research has the supplied positive ID.
      */
     404: ErrorResponse;
     /**
-     * The request fields, path parameter, or query parameters are invalid.
+     * The research is still referenced by one or more continuations.
+     */
+    409: ErrorResponse;
+    /**
+     * The path ID, request object, fields, duplicate keys, unknown fields, or
+     * query parameters violate this contract.
+     *
      */
     422: ErrorResponse;
     /**
-     * An unexpected internal error occurred.
+     * An unexpected database or internal error occurred.
      */
     500: ErrorResponse;
 };
@@ -186,7 +237,7 @@ export type DeleteResearchError = DeleteResearchErrors[keyof DeleteResearchError
 
 export type DeleteResearchResponses = {
     /**
-     * The research was deleted successfully. The response has no body.
+     * The research was deleted successfully; the response has no body.
      */
     204: void;
 };
@@ -194,28 +245,30 @@ export type DeleteResearchResponses = {
 export type DeleteResearchResponse = DeleteResearchResponses[keyof DeleteResearchResponses];
 
 export type UpdateResearchData = {
-    body: ResearchInput;
+    body: UpdateResearchRequest;
     path: {
         /**
-         * The current research title, encoded as a URL path segment.
+         * Positive, immutable server-generated research ID.
          */
-        title: ResearchTitle;
+        id: ResearchId;
     };
     query?: never;
-    url: '/api/v1/researches/{title}';
+    url: '/api/v1/researches/{id}';
 };
 
 export type UpdateResearchErrors = {
     /**
-     * The body is empty, malformed, or contains more than one JSON value.
+     * The body is empty or whitespace-only, malformed, has trailing data, or
+     * contains more than one JSON value.
+     *
      */
     400: ErrorResponse;
     /**
-     * No research has the supplied current title.
+     * No research has the supplied positive ID.
      */
     404: ErrorResponse;
     /**
-     * Another research has the same case-sensitive, trimmed title.
+     * A root research would duplicate an existing case-sensitive trimmed title.
      */
     409: ErrorResponse;
     /**
@@ -227,11 +280,13 @@ export type UpdateResearchErrors = {
      */
     415: ErrorResponse;
     /**
-     * The request fields, path parameter, or query parameters are invalid.
+     * The path ID, request object, fields, duplicate keys, unknown fields, or
+     * query parameters violate this contract.
+     *
      */
     422: ErrorResponse;
     /**
-     * An unexpected internal error occurred.
+     * An unexpected database or internal error occurred.
      */
     500: ErrorResponse;
 };
@@ -240,9 +295,129 @@ export type UpdateResearchError = UpdateResearchErrors[keyof UpdateResearchError
 
 export type UpdateResearchResponses = {
     /**
-     * The research was replaced successfully.
+     * The research details were replaced successfully.
      */
     200: Research;
 };
 
 export type UpdateResearchResponse = UpdateResearchResponses[keyof UpdateResearchResponses];
+
+export type UpdateResearchStatusData = {
+    body: UpdateStatusRequest;
+    path: {
+        /**
+         * Positive, immutable server-generated research ID.
+         */
+        id: ResearchId;
+    };
+    query?: never;
+    url: '/api/v1/researches/{id}/status';
+};
+
+export type UpdateResearchStatusErrors = {
+    /**
+     * The body is empty or whitespace-only, malformed, has trailing data, or
+     * contains more than one JSON value.
+     *
+     */
+    400: ErrorResponse;
+    /**
+     * No research has the supplied positive ID.
+     */
+    404: ErrorResponse;
+    /**
+     * The requested status transition skips or reverses a normal status, or
+     * attempts to change a project that has already ended.
+     *
+     */
+    409: ErrorResponse;
+    /**
+     * The raw request body exceeds 64 KiB (65,536 bytes).
+     */
+    413: ErrorResponse;
+    /**
+     * Content-Type is missing or is not application/json.
+     */
+    415: ErrorResponse;
+    /**
+     * The path ID, request object, fields, duplicate keys, unknown fields, or
+     * query parameters violate this contract.
+     *
+     */
+    422: ErrorResponse;
+    /**
+     * An unexpected database or internal error occurred.
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateResearchStatusError = UpdateResearchStatusErrors[keyof UpdateResearchStatusErrors];
+
+export type UpdateResearchStatusResponses = {
+    /**
+     * Status was advanced or the idempotent value was accepted.
+     */
+    200: Research;
+};
+
+export type UpdateResearchStatusResponse = UpdateResearchStatusResponses[keyof UpdateResearchStatusResponses];
+
+export type UpdateResearchProcessData = {
+    body: UpdateProcessRequest;
+    path: {
+        /**
+         * Positive, immutable server-generated research ID.
+         */
+        id: ResearchId;
+    };
+    query?: never;
+    url: '/api/v1/researches/{id}/process';
+};
+
+export type UpdateResearchProcessErrors = {
+    /**
+     * The body is empty or whitespace-only, malformed, has trailing data, or
+     * contains more than one JSON value.
+     *
+     */
+    400: ErrorResponse;
+    /**
+     * No research has the supplied positive ID.
+     */
+    404: ErrorResponse;
+    /**
+     * The requested process transition skips, reverses, advances beyond the
+     * final process, or the project has already ended.
+     *
+     */
+    409: ErrorResponse;
+    /**
+     * The raw request body exceeds 64 KiB (65,536 bytes).
+     */
+    413: ErrorResponse;
+    /**
+     * Content-Type is missing or is not application/json.
+     */
+    415: ErrorResponse;
+    /**
+     * The path ID, request object, fields, duplicate keys, unknown fields, or
+     * query parameters violate this contract.
+     *
+     */
+    422: ErrorResponse;
+    /**
+     * An unexpected database or internal error occurred.
+     */
+    500: ErrorResponse;
+};
+
+export type UpdateResearchProcessError = UpdateResearchProcessErrors[keyof UpdateResearchProcessErrors];
+
+export type UpdateResearchProcessResponses = {
+    /**
+     * Process was advanced or the idempotent value was accepted.
+     */
+    200: Research;
+};
+
+export type UpdateResearchProcessResponse = UpdateResearchProcessResponses[keyof UpdateResearchProcessResponses];

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateResearchData, CreateResearchErrors, CreateResearchResponses, DeleteResearchData, DeleteResearchErrors, DeleteResearchResponses, GetHealthData, GetHealthErrors, GetHealthResponses, ListResearchesData, ListResearchesErrors, ListResearchesResponses, UpdateResearchData, UpdateResearchErrors, UpdateResearchResponses } from './types.gen';
+import type { CreateResearchData, CreateResearchErrors, CreateResearchResponses, DeleteResearchData, DeleteResearchErrors, DeleteResearchResponses, GetHealthData, GetHealthErrors, GetHealthResponses, ListResearchesData, ListResearchesErrors, ListResearchesResponses, UpdateResearchData, UpdateResearchErrors, UpdateResearchProcessData, UpdateResearchProcessErrors, UpdateResearchProcessResponses, UpdateResearchResponses, UpdateResearchStatusData, UpdateResearchStatusErrors, UpdateResearchStatusResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -19,15 +19,19 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
- * Check service and database availability
+ * Check service availability
+ *
+ * Checks whether the service and its database are available.
  */
 export const getHealth = <ThrowOnError extends boolean = false>(options?: Options<GetHealthData, ThrowOnError>) => (options?.client ?? client).get<GetHealthResponses, GetHealthErrors, ThrowOnError>({ url: '/health', ...options });
 
 /**
  * List all researches
  *
- * Returns the shared research list sorted by title in ascending order.
- * This operation accepts neither a request body nor query parameters.
+ * Returns the shared research list sorted by title ascending and then by
+ * ID ascending when titles are equal. An empty database returns `[]`.
+ * This operation accepts neither a non-empty request body nor query
+ * parameters.
  *
  */
 export const listResearches = <ThrowOnError extends boolean = false>(options?: Options<ListResearchesData, ThrowOnError>) => (options?.client ?? client).get<ListResearchesResponses, ListResearchesErrors, ThrowOnError>({ url: '/api/v1/researches', ...options });
@@ -35,10 +39,15 @@ export const listResearches = <ThrowOnError extends boolean = false>(options?: O
 /**
  * Create a research
  *
- * Accepts exactly one JSON object with only `title` and `description`.
- * Unicode whitespace is trimmed from both values before validation and storage.
- * Duplicate JSON keys are rejected. The raw request body limit is 64 KiB
- * (65,536 bytes). Title uniqueness is case-sensitive.
+ * Creates one research atomically. The server generates a positive,
+ * immutable, unique ID that is never reused after deletion. Status starts
+ * at "กำลังดำเนินการ" and process starts at "สัญญาโครงการ".
+ *
+ * continuationOfId is required. A root research sends null; a continuation
+ * sends the positive ID of an existing research. The referenced research
+ * may already be completed or terminated. A root title cannot duplicate
+ * any existing trimmed title. Continuations may use duplicate titles.
+ * Title comparison is case-sensitive after Unicode trimming.
  *
  */
 export const createResearch = <ThrowOnError extends boolean = false>(options: Options<CreateResearchData, ThrowOnError>) => (options.client ?? client).post<CreateResearchResponses, CreateResearchErrors, ThrowOnError>({
@@ -53,24 +62,70 @@ export const createResearch = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Delete a research
  *
- * Deletes the research identified by its current, URL-encoded title.
- * This operation accepts neither a request body nor query parameters.
+ * Deletes the research identified by ID. The deleted ID is never reused.
+ * A research referenced through continuationOfId cannot be deleted. This
+ * operation accepts neither a non-empty request body nor query parameters.
  *
  */
-export const deleteResearch = <ThrowOnError extends boolean = false>(options: Options<DeleteResearchData, ThrowOnError>) => (options.client ?? client).delete<DeleteResearchResponses, DeleteResearchErrors, ThrowOnError>({ url: '/api/v1/researches/{title}', ...options });
+export const deleteResearch = <ThrowOnError extends boolean = false>(options: Options<DeleteResearchData, ThrowOnError>) => (options.client ?? client).delete<DeleteResearchResponses, DeleteResearchErrors, ThrowOnError>({ url: '/api/v1/researches/{id}', ...options });
 
 /**
- * Replace a research
+ * Replace research details
  *
- * Replaces both fields of the research identified by its current, URL-encoded
- * title. The request title may be unchanged or changed to another unique title.
- * The replacement is atomic. The request-body parsing, trimming, field
- * validation, duplicate-key rejection, and 64 KiB raw-body limit are the same
- * as for creation.
+ * Atomically replaces title and description only. ID, continuationOfId,
+ * status, and process remain unchanged. A root may retain its current title
+ * while changing description even when a continuation has the same title.
+ * If a root changes its title, the new trimmed title cannot duplicate any
+ * existing research title. A continuation may change to a duplicate title.
  *
  */
 export const updateResearch = <ThrowOnError extends boolean = false>(options: Options<UpdateResearchData, ThrowOnError>) => (options.client ?? client).put<UpdateResearchResponses, UpdateResearchErrors, ThrowOnError>({
-    url: '/api/v1/researches/{title}',
+    url: '/api/v1/researches/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Advance research status
+ *
+ * Updates status atomically from the latest persisted value. A normal
+ * status may move only to the next normal status, or jump directly to
+ * "โครงการเสร็จสิ้น" or "ยุติโครงการ". Normal statuses cannot be skipped
+ * or reversed. Sending the current status again is idempotent and returns
+ * 200, including the same terminal status.
+ *
+ * Both terminal statuses end the project. Entering a terminal status keeps
+ * the current process unchanged and does not mark it complete. After that,
+ * status cannot change to another value and process cannot advance.
+ *
+ */
+export const updateResearchStatus = <ThrowOnError extends boolean = false>(options: Options<UpdateResearchStatusData, ThrowOnError>) => (options.client ?? client).patch<UpdateResearchStatusResponses, UpdateResearchStatusErrors, ThrowOnError>({
+    url: '/api/v1/researches/{id}/status',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Advance research process
+ *
+ * Updates the single current process atomically from the latest persisted
+ * value. Process may move only to the next value; it cannot skip, reverse,
+ * or advance beyond "การปิดบัญชีธนาคาร". Sending the current process again
+ * is idempotent and returns 200.
+ *
+ * Advancing process does not change status. Completing the final process
+ * does not automatically complete the project. Process cannot be changed
+ * after status becomes "โครงการเสร็จสิ้น" or "ยุติโครงการ".
+ *
+ */
+export const updateResearchProcess = <ThrowOnError extends boolean = false>(options: Options<UpdateResearchProcessData, ThrowOnError>) => (options.client ?? client).patch<UpdateResearchProcessResponses, UpdateResearchProcessErrors, ThrowOnError>({
+    url: '/api/v1/researches/{id}/process',
     ...options,
     headers: {
         'Content-Type': 'application/json',
