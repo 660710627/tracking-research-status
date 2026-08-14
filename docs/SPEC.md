@@ -1,8 +1,9 @@
 # SPEC Tracking-Research-Status MVP
 ## Users
-- Admin: เพิ่มงานวิจัย, ดูรายการงานวิจัยทั้งหมด
-- Member: ดูรายการงานวิจัยทั้งหมด
-- ทั้งสองบทบาทเห็นรายการวิจัยเดียวกัน ไม่มีมุมมองแยกตามบทบาท
+- ผู้ดูแลระบบ: เพิ่มงานวิจัย, ดูรายการงานวิจัยทั้งหมด, ลบงานวิจัย, แก้ไขข้อมูล
+- ผู้ประสานงาน: เพิ่มงานวิจัย, ดูรายการงานวิจัยทั้งหมด, ลบงานวิจัย, แก้ไขข้อมูล
+- นักวิจัย: ดูรายการงานวิจัยทั้งหมด
+- ทั้งสามบทบาทเห็นรายการวิจัยเดียวกัน ยังไม่มีมุมมองแยกตามบทบาท
 
 ## Out of scope (MVP v1)
 - Authentication / user accounts
@@ -13,66 +14,182 @@
 ## Acceptance Criteria
 
 AC-1: ระบบสามารถเพิ่มงานวิจัยได้
-- ระบบได้รับคำขอ POST /api/v1/researches ที่มี Content-Type เป็น application/json พร้อม title และ description ที่ถูกต้อง
-  → 201 พร้อมข้อมูล id, title และ description
-- ระบบตัดช่องว่างหัวท้ายของ title และ description ก่อนบันทึก
-- คำขอไม่มี title หรือ description
-  → 422 พร้อม code "VALIDATION_ERROR"
-- title หรือ description มีค่าเป็น null
-  → 422 พร้อม code "VALIDATION_ERROR"
-- title หรือ description ไม่ใช่ข้อมูลชนิด string
-  → 422 พร้อม code "VALIDATION_ERROR"
-- title หรือ description เป็นข้อความว่างหรือมีเฉพาะช่องว่าง
-  → 422 พร้อม code "VALIDATION_ERROR"
-- request body ไม่ใช่ JSON ที่ถูกต้อง
-  → 400 พร้อม code "INVALID_JSON"
-- Content-Type ไม่ใช่ application/json
-  → 415 พร้อม code "UNSUPPORTED_MEDIA_TYPE"
-- request body มี id หรือฟิลด์อื่นนอกเหนือจาก title และ description
-  → 422 พร้อม code "VALIDATION_ERROR"
+- เมื่อเรียก POST /api/v1/researches ด้วย title และ description ที่ถูกต้อง (บันทึกงานวิจัยสำเร็จ)
+  → ตอบ 201
+- Request body ต้องเป็น JSON object ที่มีเฉพาะ title และ description
+- Response มีเฉพาะ title และ description
+- Response ต้องตรงกับข้อมูลที่บันทึกในฐานข้อมูล
+- ระบบตัด Unicode whitespace ที่หัวและท้ายก่อนตรวจสอบและบันทึก
+- หาก request มี id หรือฟิลด์อื่น
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
+- หากมีงานวิจัยที่ใช้ title เดียวกันหลังตัด whitespace
+  → ตอบ 409 พร้อม code TITLE_ALREADY_EXISTS
+- การตรวจ title ซ้ำเป็นแบบ case-sensitive
+- ฐานข้อมูลต้องมี UNIQUE constraint สำหรับ title เพื่อป้องกันข้อมูลซ้ำจาก concurrent requests
 
-AC-2: ระบบสร้างรหัสประจำตัวของงานวิจัยโดยอัตโนมัติ
-- ระบบสร้าง id ให้อัตโนมัติเมื่อเพิ่มงานวิจัย โดยผู้ใช้ไม่ต้องและไม่สามารถกำหนด id เอง
-- id เป็นข้อมูลชนิด string เป็นตัวเลข 6 ตัว
-- id ไม่มีเลขศูนย์นำหน้า
-- งานวิจัยแต่ละรายการมี id ที่ไม่ซ้ำกัน
-- ฐานข้อมูลกำหนด id เป็น PRIMARY KEY
-- ฐานข้อมูลกำหนด CHECK constraint ให้ id เป็นตัวอักษรที่เป็นตัวเลข 6 ตัว 
-- เมื่อระบบสร้าง id ที่ซ้ำกับรายการเดิม ระบบจะสร้าง id ใหม่ก่อนบันทึก
-- เมื่อระบบไม่สามารถสร้าง id ที่ไม่ซ้ำได้
-  → 503 พร้อม code "ID_GENERATION_FAILED"
-- เมื่อเพิ่มงานวิจัยสำเร็จ
-  → 201 พร้อม id ที่ระบบสร้างขึ้น
+AC-2: ระบบตรวจสอบ title
+- ต้องมีฟิลด์ title
+- ค่าต้องเป็น string และห้ามเป็น null
+- ระบบตัด Unicode whitespace ที่หัวและท้ายก่อน validation
+- หลังตัด whitespace ต้องมีความยาว 1–200 Unicode characters
+- ห้ามมี newline, tab, NUL, control characters และ /
+- หากไม่ผ่านเงื่อนไข
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
 
-AC-3: ระบบสามารถแสดงรายการงานวิจัยทั้งหมดได้
-- ระบบได้รับคำขอ GET /api/v1/researches
-  → 200 พร้อม JSON array ที่มีรายการงานวิจัยทั้งหมด
-- งานวิจัยแต่ละรายการประกอบด้วย id, title และ description
-- id ใน response เป็น string เป็นตัวเลข 6 ตัว
-- ระบบเรียงรายการตาม id จากน้อยไปมาก
-- Admin และ Member เห็นรายการงานวิจัยชุดเดียวกัน
-- ระบบยังไม่มีงานวิจัย
-  → 200 พร้อมรายการว่าง []
-- Endpoint นี้ไม่ต้องรับ request body
+AC-3: ระบบตรวจสอบ description
+- ต้องมีฟิลด์ description
+- ค่าต้องเป็น string และห้ามเป็น null
+- ระบบตัด Unicode whitespace ที่หัวและท้ายก่อน validation
+- หลังตัด whitespace ต้องมีความยาว 1–5,000 Unicode characters
+- อนุญาต newline และ tab
+- ห้ามมี NUL และ control characters อื่น
+- หากไม่ผ่านเงื่อนไข
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
 
-AC-4: ระบบสามารถแสดงรายละเอียดงานวิจัยได้
-- ระบบได้รับคำขอ GET /api/v1/researches/{id} ด้วย id ที่เป็นตัวเลข 6 หลักและมีอยู่
-  → 200 พร้อมข้อมูล id, title และ description
-- ระบบได้รับ id ที่มีรูปแบบถูกต้องแต่ไม่พบงานวิจัย
-  → 404 พร้อม code "RESEARCH_NOT_FOUND"
-- id มีตัวอักษรหรืออักขระที่ไม่ใช่ตัวเลข
-  → 422 พร้อม code "VALIDATION_ERROR"
-- id มีจำนวนตัวอักษรที่เป็นตัวเลขมากกว่าหรือน้อยกว่า 6 ตัว
-  → 422 พร้อม code "VALIDATION_ERROR"
-- Endpoint นี้ไม่ต้องรับ request body
+AC-4: ระบบตรวจสอบ request body
+- POST และ PUT ต้องใช้ Content-Type: application/json
+- ยอมรับ parameter เช่น application/json; charset=utf-8
+- การตรวจ media type ไม่สนใจตัวพิมพ์ใหญ่–เล็ก
+- หากไม่มี Content-Type หรือเป็นชนิดอื่น
+  → ตอบ 415 พร้อม code UNSUPPORTED_MEDIA_TYPE
+- Body ว่างหรือมีเฉพาะ whitespace
+  → ตอบ 400 พร้อม code INVALID_JSON
+- JSON ไม่สมบูรณ์หรือ parse ไม่ได้
+  → ตอบ 400 พร้อม code INVALID_JSON
+- มีข้อมูลต่อท้าย JSON หรือมี JSON มากกว่าหนึ่งค่า
+  → ตอบ 400 พร้อม code INVALID_JSON
+- JSON ระดับบนสุดไม่ใช่ object
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
+- JSON มี key ซ้ำหรือฟิลด์ที่ระบบไม่รองรับ
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
+- Request body มีขนาดเกิน 64 KiB
+  → ตอบ 413 พร้อม code PAYLOAD_TOO_LARGE
+
+AC-5: ระบบแสดงรายการงานวิจัยทั้งหมดได้
+- เมื่อเรียก GET /api/v1/researches
+  → ตอบ 200
+- Response มี Content-Type: application/json
+- Response เป็น JSON array
+- แต่ละรายการมีเฉพาะ title และ description
+- ต้องไม่มี id หรือฟิลด์อื่น
+- ระบบเรียงรายการตาม title จากน้อยไปมาก
+- หากไม่มีงานวิจัย
+  → ตอบ 200 พร้อม []
+- ผู้เรียกทุกคนเห็นรายการชุดเดียวกัน
+- หากส่ง request body ที่ไม่ว่าง
+  → ตอบ 400 พร้อม code INVALID_REQUEST_BODY
+- หากส่ง query parameter ใด
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
+
+AC-6: ระบบสามารถแก้ไขงานวิจัยได้
+- {title} คือ title ปัจจุบันและต้องผ่าน URL encoding
+- Request body ต้องมีทั้ง title และ description
+- การแก้ไขเป็นการแทนข้อมูลเดิมทั้งหมด
+- เมื่อพบงานวิจัยและข้อมูลใหม่ถูกต้อง
+  → ตอบ 200 พร้อม title และ description หลังแก้ไข
+- สามารถเปลี่ยน title ได้
+- หลังเปลี่ยน title แล้ว title เดิมต้องไม่สามารถใช้อ้างอิงรายการได้
+- หากไม่พบ title ปัจจุบัน
+  → ตอบ 404 พร้อม code RESEARCH_NOT_FOUND
+- หาก title ใหม่เหมือน title เดิม สามารถแก้ไข description ได้
+- หาก path title มีรูปแบบไม่ถูกต้อง
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
+- การแก้ไข title และ description ต้องสำเร็จหรือล้มเหลวพร้อมกันใน transaction เดียว
+
+AC-7: ระบบสามารถลบงานวิจัยได้
+- {title} คือ title ปัจจุบันและต้องผ่าน URL encoding
+- เมื่อพบและลบสำเร็จ
+  → ตอบ 204 โดยไม่มี response body
+- หลังลบ รายการต้องไม่ปรากฏใน GET /api/v1/researches
+- หากไม่พบ title
+  → ตอบ 404 พร้อม code RESEARCH_NOT_FOUND
+- หากเรียกลบ title เดิมซ้ำ
+  → ตอบ 404 พร้อม code RESEARCH_NOT_FOUND
+- หากส่ง request body ที่ไม่ว่าง
+  → ตอบ 400 พร้อม code INVALID_REQUEST_BODY
+- หากส่ง query parameter ใด
+  → ตอบ 422 พร้อม code VALIDATION_ERROR
 
 ## Error format (ทั้งระบบ)
 {"error": {"code": "MACHINE_READABLE_CODE", "message": "human readable"}}
 
 ## API Contract
-GET  /health                              → 200 {"status":"ok"}
-GET  /api/v1/researches                   → 200 [{id,title,description}]
-GET  /api/v1/researches/{id}              → 200 | 404 RESEARCH_NOT_FOUND | 422 VALIDATION_ERROR
+GET  /health
+     → 200 {"status":"ok"}
+     → 503 SERVICE_UNAVAILABLE
+     → 500 INTERNAL_ERROR
+
+GET  /api/v1/researches
+     → 200 [{title,description}]
+     → 400 INVALID_REQUEST_BODY
+     → 422 VALIDATION_ERROR
+     → 500 INTERNAL_ERROR
+
 POST /api/v1/researches {title,description}
-                                           → 201 | 400 INVALID_JSON | 415 UNSUPPORTED_MEDIA_TYPE
-                                                 | 422 VALIDATION_ERROR | 503 ID_GENERATION_FAILED
+     → 201 {title,description}
+     → 400 INVALID_JSON
+     → 409 TITLE_ALREADY_EXISTS
+     → 413 PAYLOAD_TOO_LARGE
+     → 415 UNSUPPORTED_MEDIA_TYPE
+     → 422 VALIDATION_ERROR
+     → 500 INTERNAL_ERROR
+
+PUT  /api/v1/researches/{title} {title,description}
+     → 200 {title,description}
+     → 400 INVALID_JSON
+     → 404 RESEARCH_NOT_FOUND
+     → 413 PAYLOAD_TOO_LARGE
+     → 415 UNSUPPORTED_MEDIA_TYPE
+     → 422 VALIDATION_ERROR
+     → 500 INTERNAL_ERROR
+
+DELETE /api/v1/researches/{title}
+       → 204
+       → 400 INVALID_REQUEST_BODY
+       → 404 RESEARCH_NOT_FOUND
+       → 422 VALIDATION_ERROR
+       → 500 INTERNAL_ERROR
+
+ทุก Endpoint
+     → 404 ROUTE_NOT_FOUND
+     → 405 METHOD_NOT_ALLOWED
+
+## SQL
+     CREATE TABLE IF NOT EXISTS researches (
+  title TEXT NOT NULL COLLATE BINARY,
+  description TEXT NOT NULL,
+
+  -- ใช้ title เป็นตัวระบุรายการและห้ามซ้ำ
+  CONSTRAINT researches_pk
+    PRIMARY KEY (title),
+
+  -- ต้องบันทึกค่าที่ตัดช่องว่างหัวท้ายแล้ว
+  CONSTRAINT title_must_be_trimmed
+    CHECK (title = trim(title)),
+
+  CONSTRAINT description_must_be_trimmed
+    CHECK (description = trim(description)),
+
+  -- ตรวจความยาวตาม SPEC
+  CONSTRAINT title_length
+    CHECK (length(title) BETWEEN 1 AND 200),
+
+  CONSTRAINT description_length
+    CHECK (length(description) BETWEEN 1 AND 5000),
+
+  -- title ห้ามมี /, newline, tab และ NUL
+  CONSTRAINT title_forbidden_characters
+    CHECK (
+      instr(title, '/') = 0
+      AND instr(title, char(0)) = 0
+      AND instr(title, char(9)) = 0
+      AND instr(title, char(10)) = 0
+      AND instr(title, char(13)) = 0
+    ),
+
+  -- description อนุญาต tab/newline แต่ห้าม NUL
+  CONSTRAINT description_forbidden_characters
+    CHECK (
+      instr(description, char(0)) = 0
+    )
+) WITHOUT ROWID;

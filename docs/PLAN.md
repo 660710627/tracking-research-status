@@ -1,39 +1,43 @@
 # PLAN Tracking-Research-Status MVP
 
-## เป้าหมาย
-- รองรับการเพิ่ม ดูรายการงานวิจัย
-- ไม่รวม Authentication การเปลี่ยนสถานะ การแก้ไข การลบ และ Deployment
-- ใช้ `docs/openapi.yaml` เป็น API contract และแหล่งความจริงเดียว
+## ขอบเขต
+- รองรับ health check และการเพิ่ม ดูรายการ แก้ไข และลบงานวิจัยตาม `SPEC.md`
+- งานวิจัยมีเฉพาะ `title` และ `description`; `title` ใช้ระบุรายการ
+- ไม่รวม ID, authentication, การแยกสิทธิ์ตามบทบาท, การปรับสถานะ และ deployment
 
 ## Contract first
-- จัดทำและตรวจสอบ `docs/openapi.yaml` ให้ตรงกับ endpoint, schema, status และ error code ใน `SPEC.md` ก่อนเริ่ม implementation
-- กำหนด `id` เป็นข้อมูลชนิด string เป็นตัวเลข 6 ตัว และกำหนด error response แบบเดียวทั้งระบบ
-- สร้าง typed API client ของ frontend จาก OpenAPI และห้ามแก้ generated code ด้วยมือ
+- จัดทำ `docs/openapi.yaml` ให้ตรงกับ endpoint, schema, status และ error code ใน `SPEC.md` ก่อน implementation
+- ใช้ docs/openapi.yaml เป็นแหล่งความจริงเดียวและสร้าง typed API client สำหรับ frontend; ห้ามแก้ generated code ด้วยมือ
+- หาก contract หรือ SPEC กำกวม ให้หยุดและถามก่อนเปลี่ยนขอบเขต
 
 ## Backend
-- `db`: เปิดการเชื่อมต่อ SQLite และสร้าง schema โดยใช้ `id` เป็น PRIMARY KEY พร้อม CHECK constraint สำหรับตัวอักษรที่เป็นตัวเลข 6 ตัว 
-- `repo`: รู้เฉพาะ SQL สำหรับเพิ่ม เรียงรายการตาม `id` และค้นหาด้วย `id`
-- `service`: ตรวจและ trim ข้อมูล สร้าง `id` ที่ไม่ซ้ำ จัดการ collision และคืน typed errors ตามกฎธุรกิจ
-- `handler`: รู้เฉพาะ HTTP ตรวจ Content-Type/JSON เรียก service และแปลง typed errors เป็น HTTP status กับ error code ตาม SPEC
-- `cmd/server`: ประกอบ dependency และเปิด Gin server โดยไม่ใส่กฎธุรกิจ
+- `db`: เปิด SQLite `library.db` และสร้าง schema พร้อม `NOT NULL`, validation constraints และ `UNIQUE(title)`
+- `repo`: มีเฉพาะ SQL สำหรับเพิ่ม เรียงรายการตาม title ค้นหา แก้ไขแบบ transaction และลบ
+- `service`: trim/validate ข้อมูล บังคับกฎ title ไม่ซ้ำ และคืน typed errors ตามกฎธุรกิจ
+- `handler`: จัดการเฉพาะ HTTP เช่น Content-Type, body limit, JSON, path/query และแปลง typed errors เป็น status กับ error code ตาม SPEC
+- `cmd/server`: ประกอบ dependencies, routes และเริ่ม Gin โดยไม่ใส่ business rules
+- Error response ทั้งระบบใช้ `{"error":{"code":"...","message":"..."}}`
 
 ## Frontend
-- React pages เป็นหน้าจอหลักและควบคุม flow การเพิ่ม ดูรายการ 
-- Components รับข้อมูลและ event ผ่าน typed props และใช้งาน generated typed API client ตาม flow `pages → components → generated client`
+- ใช้ flow `pages → components → generated typed API client`
+- Pages ควบคุม flow การโหลดรายการ เพิ่ม แก้ไข และลบ; components รับข้อมูลและ events ผ่าน typed props
+- แสดง loading, empty, success และ error state โดยอ้างอิง error code จาก contract
 - ห้าม pages หรือ components เรียก `fetch` โดยตรง
-- แสดง validation และ API errors จาก error code โดยไม่ผูก logic กับข้อความ error
 
 ## Testing
-- เขียน test ก่อนหรือพร้อม implementation ด้วย `go test` และ `net/http/httptest`
-- ทุก test ที่ใช้ SQLite ต้องสร้างฐานข้อมูลใหม่ใน `t.TempDir()` และห้ามใช้ฐานข้อมูลร่วมกันระหว่าง test
-- ทดสอบ schema constraints, repo queries, การเรียงรายการ, การสร้างและ collision ของ `id`, validation และ typed errors
-- ทดสอบ handler ครบทุก success/error response ใน SPEC รวมถึง Content-Type, JSON ผิดรูปแบบ และ `id` ไม่ถูกต้อง
-- ตรวจ frontend ด้วย ESLint, TypeScript build และการใช้งาน generated client
+- เขียน test ก่อนหรือพร้อม implementation และครอบคลุม success/error ทุกกรณีใน SPEC
+- Database/repo test ใช้ SQLite ใหม่ใน `t.TempDir()` และหนึ่งฐานข้อมูลต่อหนึ่ง test; ทดสอบ constraints, sorting, transaction และ concurrent title conflict
+- Service test ครอบคลุม trim, validation, duplicate title, update และ delete rules
+- Handler test ใช้ `go test` กับ `net/http/httptest` ครบทุก endpoint, status, headers และ error format
+- Frontend ตรวจ typed client integration, ESLint และ TypeScript/Vite build
 
 ## ลำดับงาน
-1. จัดทำและยืนยัน `docs/openapi.yaml`
+1. ยืนยัน `docs/openapi.yaml` และ generated client contract
 2. สร้าง schema และ repo พร้อม test
-3. สร้าง service พร้อม test กฎธุรกิจ
-4. สร้าง Gin handler พร้อม `httptest`
-5. สร้าง generated typed client, pages และ components
-6. รัน backend tests/lint/security และ frontend lint/build
+3. สร้าง service และ typed errors พร้อม test
+4. สร้าง Gin handlers และ routes พร้อม `httptest`
+5. ประกอบ server และตรวจ backend tests/lint/security
+6. สร้าง frontend pages/components ผ่าน generated client
+7. ตรวจ frontend lint/build และทดสอบ flow ตาม acceptance criteria
+
+ดำเนินงานทีละหนึ่ง task ตาม `docs/TASKS.md` และไม่ทำเกินขอบเขต task

@@ -1,0 +1,342 @@
+openapi: 3.1.0
+info:
+  title: Tracking Research Status API
+  version: 1.0.0
+  description: |
+    API contract for the Tracking Research Status MVP.
+    The API has no authentication, role-specific views, research ID, or status field.
+
+    Every error response uses `{"error":{"code":"...","message":"..."}}`.
+    Unknown routes return `404 ROUTE_NOT_FOUND`; unsupported methods on known routes
+    return `405 METHOD_NOT_ALLOWED`.
+security: []
+servers:
+  - url: /
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check service and database availability
+      responses:
+        "200":
+          description: The service and database are available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/researches:
+    get:
+      operationId: listResearches
+      summary: List all researches
+      description: |
+        Returns the shared research list sorted by title in ascending order.
+        This operation accepts neither a request body nor query parameters.
+      responses:
+        "200":
+          description: The complete research list; an empty database returns `[]`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Research"
+        "400":
+          $ref: "#/components/responses/InvalidRequestBody"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      operationId: createResearch
+      summary: Create a research
+      description: |
+        Accepts exactly one JSON object with only `title` and `description`.
+        Unicode whitespace is trimmed from both values before validation and storage.
+        Duplicate JSON keys are rejected. The raw request body limit is 64 KiB
+        (65,536 bytes). Title uniqueness is case-sensitive.
+      requestBody:
+        required: true
+        x-max-body-bytes: 65536
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchInput"
+      responses:
+        "201":
+          description: The research was stored successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Research"
+        "400":
+          $ref: "#/components/responses/InvalidJson"
+        "409":
+          $ref: "#/components/responses/TitleAlreadyExists"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/researches/{title}:
+    parameters:
+      - $ref: "#/components/parameters/CurrentTitle"
+
+    put:
+      operationId: updateResearch
+      summary: Replace a research
+      description: |
+        Replaces both fields of the research identified by its current, URL-encoded
+        title. The request title may be unchanged or changed to another unique title.
+        The replacement is atomic. The request-body parsing, trimming, field
+        validation, duplicate-key rejection, and 64 KiB raw-body limit are the same
+        as for creation.
+      requestBody:
+        required: true
+        x-max-body-bytes: 65536
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResearchInput"
+      responses:
+        "200":
+          description: The research was replaced successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Research"
+        "400":
+          $ref: "#/components/responses/InvalidJson"
+        "404":
+          $ref: "#/components/responses/ResearchNotFound"
+        "409":
+          $ref: "#/components/responses/TitleAlreadyExists"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      operationId: deleteResearch
+      summary: Delete a research
+      description: |
+        Deletes the research identified by its current, URL-encoded title.
+        This operation accepts neither a request body nor query parameters.
+      responses:
+        "204":
+          description: The research was deleted successfully. The response has no body.
+        "400":
+          $ref: "#/components/responses/InvalidRequestBody"
+        "404":
+          $ref: "#/components/responses/ResearchNotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    CurrentTitle:
+      name: title
+      in: path
+      required: true
+      description: The current research title, encoded as a URL path segment.
+      schema:
+        $ref: "#/components/schemas/ResearchTitle"
+
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          const: ok
+
+    Research:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - description
+      properties:
+        title:
+          $ref: "#/components/schemas/ResearchTitle"
+        description:
+          $ref: "#/components/schemas/ResearchDescription"
+
+    ResearchInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - description
+      properties:
+        title:
+          $ref: "#/components/schemas/ResearchTitle"
+        description:
+          $ref: "#/components/schemas/ResearchDescription"
+
+    ResearchTitle:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^[^/\x00-\x1F\x7F]+$'
+      description: |
+        A case-sensitive unique title. Unicode whitespace is trimmed before
+        validation. Newline, tab, NUL, control characters, and `/` are forbidden.
+
+    ResearchDescription:
+      type: string
+      minLength: 1
+      maxLength: 5000
+      pattern: '^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+$'
+      description: |
+        Unicode whitespace is trimmed before validation. Newline and tab are
+        allowed; NUL and other control characters are forbidden.
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_JSON
+                - INVALID_REQUEST_BODY
+                - INTERNAL_ERROR
+                - METHOD_NOT_ALLOWED
+                - PAYLOAD_TOO_LARGE
+                - RESEARCH_NOT_FOUND
+                - ROUTE_NOT_FOUND
+                - SERVICE_UNAVAILABLE
+                - TITLE_ALREADY_EXISTS
+                - UNSUPPORTED_MEDIA_TYPE
+                - VALIDATION_ERROR
+            message:
+              type: string
+
+  responses:
+    InvalidJson:
+      description: The body is empty, malformed, or contains more than one JSON value.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INVALID_JSON
+              message: Request body must contain one valid JSON object.
+
+    InvalidRequestBody:
+      description: This operation does not accept a non-empty request body.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INVALID_REQUEST_BODY
+              message: This operation does not accept a request body.
+
+    InternalError:
+      description: An unexpected internal error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: An unexpected internal error occurred.
+
+    PayloadTooLarge:
+      description: The raw request body exceeds 64 KiB (65,536 bytes).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: PAYLOAD_TOO_LARGE
+              message: Request body exceeds 64 KiB.
+
+    ResearchNotFound:
+      description: No research has the supplied current title.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: RESEARCH_NOT_FOUND
+              message: Research was not found.
+
+    ServiceUnavailable:
+      description: The database is unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: SERVICE_UNAVAILABLE
+              message: Service is temporarily unavailable.
+
+    TitleAlreadyExists:
+      description: Another research has the same case-sensitive, trimmed title.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: TITLE_ALREADY_EXISTS
+              message: A research with this title already exists.
+
+    UnsupportedMediaType:
+      description: Content-Type is missing or is not application/json.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: UNSUPPORTED_MEDIA_TYPE
+              message: Content-Type must be application/json.
+
+    ValidationError:
+      description: The request fields, path parameter, or query parameters are invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Request validation failed.
