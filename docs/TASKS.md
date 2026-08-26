@@ -51,14 +51,14 @@
 - **DoD:** `cd backend; go test ./...` ผ่าน; response เรียงและมี fields ตรง OpenAPI; layer boundaries ตรง PLAN
 
 ### T-09 — สร้าง UI รายการงานวิจัย
-- **สิ่งที่ทำ:** อ่านและยึด `docs/DESIGN_BRIEF.md` กับ `.agents/skills/frontend-design/SKILL.md` แล้วสร้าง React page/components สำหรับรายการผ่าน generated client โดยใช้ ID แยกรายการที่ชื่อซ้ำ
+- **สิ่งที่ทำ:** อ่านและยึด `.agents/skills/frontend-design/SKILL.md` แล้วสร้าง React page/components สำหรับรายการผ่าน generated client โดยใช้ ID แยกรายการที่ชื่อซ้ำ
 - **Dependencies:** T-08
-- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading ระหว่างรอ, error เมื่อ API ล้มเหลว, empty เมื่อได้ `[]`, success แสดงข้อมูลตามลำดับจาก API; layout/responsive/accessibility ตรง Design Brief; ไม่มี direct `fetch`
+- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading ระหว่างรอ, error เมื่อ API ล้มเหลว, empty เมื่อได้ `[]`, success แสดงข้อมูลตามลำดับจาก API; layout/responsive/accessibility ตรง skill; ไม่มี direct `fetch`
 
 ### T-10 — สร้าง UI เพิ่มงานวิจัย
-- **สิ่งที่ทำ:** อ่านและยึด `docs/DESIGN_BRIEF.md` กับ `.agents/skills/frontend-design/SKILL.md` แล้วสร้าง form สำหรับ title, description และ continuationOfId ผ่าน generated client พร้อม refresh list เมื่อสำเร็จ
+- **สิ่งที่ทำ:** อ่านและยึด `.agents/skills/frontend-design/SKILL.md` แล้วสร้าง form สำหรับ title, description และ continuationOfId ผ่าน generated client พร้อม refresh list เมื่อสำเร็จ
 - **Dependencies:** T-09
-- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading/submitting ป้องกันส่งซ้ำ, error แสดง validation/not-found/conflict/API failure, empty ตรวจฟิลด์จำเป็น, success แสดง record ใหม่และค่าที่ normalize แล้ว; dialog/form/focus/feedback ตรง Design Brief; ไม่มี direct `fetch`
+- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading/submitting ป้องกันส่งซ้ำ, error แสดง validation/not-found/conflict/API failure, empty ตรวจฟิลด์จำเป็น, success แสดง record ใหม่และค่าที่ normalize แล้ว; dialog/form/focus/feedback ตรง skill; ไม่มี direct `fetch`
 
 ## Feature: แก้ไขงานวิจัย — AC-2 ถึง AC-4, AC-6 และ AC-10 ที่เกี่ยวข้อง
 
@@ -73,9 +73,9 @@
 - **DoD:** `cd backend; go test ./...` ผ่าน; mutation atomic, immutable fields คงเดิม และ response/error ตรง OpenAPI
 
 ### T-13 — สร้าง UI แก้ไขงานวิจัย
-- **สิ่งที่ทำ:** อ่านและยึด `docs/DESIGN_BRIEF.md` กับ `.agents/skills/frontend-design/SKILL.md` แล้วเพิ่ม edit flow ที่ใช้ ID ใน path และส่งเฉพาะ title/description ผ่าน generated client
+- **สิ่งที่ทำ:** อ่านและยึด `.agents/skills/frontend-design/SKILL.md` แล้วเพิ่ม edit flow ที่ใช้ ID ใน path และส่งเฉพาะ title/description ผ่าน generated client
 - **Dependencies:** T-12
-- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading ระหว่างโหลด/บันทึก, error ครอบ validation/not-found/conflict/API failure, empty ตรวจฟิลด์จำเป็น, success แสดงค่าล่าสุดโดย ID และ field immutable ไม่เปลี่ยน; dialog/form/focus/feedback ตรง Design Brief; ไม่มี direct `fetch`
+- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading ระหว่างโหลด/บันทึก, error ครอบ validation/not-found/conflict/API failure, empty ตรวจฟิลด์จำเป็น, success แสดงค่าล่าสุดโดย ID และ field immutable ไม่เปลี่ยน; dialog/form/focus/feedback ตรง skill; ไม่มี direct `fetch`
 
 ## Feature: ลบงานวิจัย — AC-7 และ AC-10 ที่เกี่ยวข้อง
 
@@ -90,9 +90,9 @@
 - **DoD:** `cd backend; go test ./...` ผ่าน; parent restriction และ non-reused ID ถูกบังคับที่ SQLite; success ไม่มี body และ response/error ตรง OpenAPI
 
 ### T-16 — สร้าง UI ลบงานวิจัย
-- **สิ่งที่ทำ:** อ่านและยึด `docs/DESIGN_BRIEF.md` กับ `.agents/skills/frontend-design/SKILL.md` แล้วเพิ่ม delete action ด้วย ID พร้อม confirmation และ refresh list ผ่าน generated client
+- **สิ่งที่ทำ:** อ่านและยึด `.agents/skills/frontend-design/SKILL.md` แล้วเพิ่ม delete action ด้วย ID พร้อม confirmation และ refresh list ผ่าน generated client
 - **Dependencies:** T-15
-- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading/deleting ป้องกันกดซ้ำ, error ครอบ not-found/continuation/API failure, empty เมื่อรายการสุดท้ายถูกลบ, success นำ record ที่มี ID ตรงกันออก; confirmation/focus/destructive feedback ตรง Design Brief; cancel แล้วข้อมูลไม่เปลี่ยนและไม่มี direct `fetch`
+- **DoD:** `cd frontend; npm run lint` และ `cd frontend; npm run build` ผ่าน; E2E checklist ผ่านครบ: loading/deleting ป้องกันกดซ้ำ, error ครอบ not-found/continuation/API failure, empty เมื่อรายการสุดท้ายถูกลบ, success นำ record ที่มี ID ตรงกันออก; confirmation/focus/destructive feedback ตรง skill; cancel แล้วข้อมูลไม่เปลี่ยนและไม่มี direct `fetch`
 
 ## Feature: ปรับสถานะ — AC-4, AC-8 และ AC-10 ที่เกี่ยวข้อง
 
@@ -121,9 +121,9 @@
 ## Hardening
 
 ### T-21 — รัน quality gates บนเครื่อง
-- **สิ่งที่ทำ:** รัน OpenAPI validation, backend tests/lint/security, generated-client drift, frontend checks, CRUD E2E checklist และตรวจ UI เทียบ `docs/DESIGN_BRIEF.md`; หากพบ defect ให้เพิ่ม failing regression test ก่อนแก้
+- **สิ่งที่ทำ:** รัน OpenAPI validation, backend tests/lint/security, generated-client drift, frontend checks, CRUD E2E checklist และตรวจ UI เทียบ `.agents/skills/frontend-design/SKILL.md`; หากพบ defect ให้เพิ่ม failing regression test ก่อนแก้
 - **Dependencies:** T-20
-- **DoD:** `npx @redocly/cli lint docs/openapi.yaml`; `cd backend; go test ./...`; `cd backend; golangci-lint run`; `cd backend; gosec ./...`; `cd backend; govulncheck ./...`; `cd frontend; npm run generate:api`; `cd frontend; npm run lint`; `cd frontend; npm run build` ผ่านทั้งหมด; generated client ไม่มี drift; E2E loading/error/empty/success ของ list/create/update/delete ผ่าน; visual/responsive/accessibility review ตรง `docs/DESIGN_BRIEF.md`
+- **DoD:** `npx @redocly/cli lint docs/openapi.yaml`; `cd backend; go test ./...`; `cd backend; golangci-lint run`; `cd backend; gosec ./...`; `cd backend; govulncheck ./...`; `cd frontend; npm run generate:api`; `cd frontend; npm run lint`; `cd frontend; npm run build` ผ่านทั้งหมด; generated client ไม่มี drift; E2E loading/error/empty/success ของ list/create/update/delete ผ่าน; visual/responsive/accessibility review ตรง `.agents/skills/frontend-design/SKILL.md`
 
 ### T-22 — เพิ่ม CI ด้วย GitHub Actions
 - **สิ่งที่ทำ:** สร้าง workflow ที่ pin Go/Node, validate OpenAPI, ตรวจ generated-client drift และรัน quality gates เดียวกับ T-21 บน clean checkout
@@ -131,6 +131,6 @@
 - **DoD:** GitHub Actions รัน OpenAPI lint, `go test ./...`, `golangci-lint run`, `gosec ./...`, `govulncheck ./...`, `npm run generate:api`, drift check, `npm run lint` และ `npm run build`; workflow ผ่าน และพิสูจน์ว่า fail เมื่อทำ test ตัวอย่างให้แดง
 
 ### T-23 — Cross-agent review ด้วย session ใหม่
-- **สิ่งที่ทำ:** เปิด session ใหม่ให้ agent ที่ไม่มีบริบท implementation ตรวจ AGENTS, SPEC, PLAN, TASKS, OpenAPI, `docs/DESIGN_BRIEF.md`, `.agents/skills/frontend-design/SKILL.md`, AC coverage, layer boundaries, database invariants, security และ CRUD UI flows พร้อมจัดระดับ findings
+- **สิ่งที่ทำ:** เปิด session ใหม่ให้ agent ที่ไม่มีบริบท implementation ตรวจ AGENTS, SPEC, PLAN, TASKS, OpenAPI, `.agents/skills/frontend-design/SKILL.md`, AC coverage, layer boundaries, database invariants, security และ CRUD UI flows พร้อมจัดระดับ findings
 - **Dependencies:** T-22
-- **DoD:** reviewer ยืนยันว่า endpoint/error code ตรง SPEC, ทุกเงื่อนไข AC มี test, test database แยกกัน, ไม่มี direct `fetch`, business rules อยู่ถูก layer และ CRUD UI ตรง Design Brief/skill โดยไม่เปลี่ยน scope; findings ระดับสูงถูกแก้โดยมี failing regression test ก่อน fix; rerun T-21 และ CI ผ่านทั้งหมด
+- **DoD:** reviewer ยืนยันว่า endpoint/error code ตรง SPEC, ทุกเงื่อนไข AC มี test, test database แยกกัน, ไม่มี direct `fetch`, business rules อยู่ถูก layer และ CRUD UI ตรง skill โดยไม่เปลี่ยน scope; findings ระดับสูงถูกแก้โดยมี failing regression test ก่อน fix; rerun T-21 และ CI ผ่านทั้งหมด

@@ -2,8 +2,8 @@
   --font-sans: 'Sarabun', 'Leelawadee UI', Tahoma, sans-serif;
 
   font-family: var(--font-sans);
-  color: #40515d;
-  background: #f4f7f8;
+  color: #173f39;
+  background: #f5f4ee;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,7 +16,7 @@
 
 html {
   min-width: 320px;
-  background: #f4f7f8;
+  background: #f5f4ee;
 }
 
 body {
@@ -42,7 +42,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid #0b6b63;
+  outline: 3px solid #0d8a74;
   outline-offset: 3px;
 }
 

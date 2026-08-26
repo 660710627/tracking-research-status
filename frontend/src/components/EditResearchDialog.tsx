@@ -122,7 +122,8 @@ export function EditResearchDialog({ research, onClose, onNotFound, onUpdated }:
           <p id="edit-dialog-summary">แก้ไขชื่อและรายละเอียด โดยข้อมูลอ้างอิงของรายการจะคงเดิม</p>
         </div>
         <button className="dialog-close" type="button" onClick={requestClose} disabled={submitting} aria-label="ปิดหน้าต่างแก้ไขงานวิจัย">
-          <span aria-hidden="true">×</span>
+          <span className="dialog-close-icon" aria-hidden="true">×</span>
+          <span className="dialog-close-label">ปิด</span>
         </button>
       </div>
 

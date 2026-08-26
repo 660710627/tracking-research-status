@@ -40,14 +40,12 @@
 - backend/internal/db/      connection + schema
 - frontend/src/             React app (api/, components/, pages/)
 - docs/                     SPEC.md, PLAN.md, TASKS.md, openapi.yaml ← อ่านก่อนเริ่มงานทุกครั้ง
-- docs/DESIGN_BRIEF.md      ทิศทาง UX/UI ของโปรเจกต์ ← อ่านก่อนเริ่ม task ออกแบบหรือ UI
-- .agents/skills/frontend-design/SKILL.md  หลักการออกแบบ frontend ← ใช้ร่วมกับ Design Brief
+- .agents/skills/frontend-design/SKILL.md  แหล่งอ้างอิง UX/UI เพียงแหล่งเดียว ← อ่านก่อนเริ่ม task ออกแบบหรือ UI
 
 ## UX/UI design references
-- ก่อนทำ task ที่เกี่ยวกับการออกแบบหรือ UI ต้องอ่าน `docs/DESIGN_BRIEF.md` และ `.agents/skills/frontend-design/SKILL.md` ให้ครบ
-- ลำดับแหล่งความจริงสำหรับงาน UI คือ `docs/SPEC.md` → `docs/openapi.yaml` → `docs/TASKS.md` → `docs/DESIGN_BRIEF.md` → รูปที่ลงทะเบียนใน `docs/design-references/` → `.agents/skills/frontend-design/SKILL.md`
-- Design Brief, รูปอ้างอิง และ skill ใช้กำหนด UX, visual direction, content, responsive behavior และ accessibility เท่านั้น ห้ามเปลี่ยนขอบเขต กฎธุรกิจ endpoint หรือ Out of scope
-- ใช้รูปต้นแบบเฉพาะไฟล์ที่เก็บใน `docs/design-references/` และมีรายการกำกับใน `docs/DESIGN_BRIEF.md`; หากยังไม่มี ห้ามสมมติว่ามีต้นแบบที่ได้รับอนุมัติ
+- ก่อนทำ task ที่เกี่ยวกับการออกแบบหรือ UI ต้องอ่าน `.agents/skills/frontend-design/SKILL.md` ให้ครบ
+- แหล่งความจริงสำหรับงาน UI คือ `docs/SPEC.md` → `docs/openapi.yaml` → `docs/TASKS.md` → `.agents/skills/frontend-design/SKILL.md`
+- Skill ใช้กำหนด UX, visual direction, content, responsive behavior และ accessibility เท่านั้น ห้ามเปลี่ยนขอบเขต กฎธุรกิจ endpoint หรือ Out of scope
 - หากแหล่งอ้างอิงขัดกัน ให้ยึดแหล่งที่อยู่ลำดับสูงกว่า และถาม human ก่อนเมื่อความขัดแย้งกระทบพฤติกรรมหรือขอบเขต
 
 ## Rules (must follow)

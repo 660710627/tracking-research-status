@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { createResearch, listResearches, type Research } from '../api/client'
+import { createResearch, type Research } from '../api/client'
 import { getAPIErrorCode } from '../api/errors'
 
 type FieldErrors = {
@@ -10,25 +10,24 @@ type FieldErrors = {
 }
 
 type CreateResearchDialogProps = {
-  researches: Research[]
   onClose: () => void
   onCreated: (research: Research) => void
 }
 
-export function CreateResearchDialog({ researches, onClose, onCreated }: CreateResearchDialogProps) {
+export function CreateResearchDialog({ onClose, onCreated }: CreateResearchDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
-  const continuationRef = useRef<HTMLSelectElement>(null)
+  const continuationRef = useRef<HTMLInputElement>(null)
   const submissionInFlightRef = useRef(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [researchKind, setResearchKind] = useState<'budget' | 'continuation'>('budget')
   const [continuationID, setContinuationID] = useState('')
-  const [continuationOptions, setContinuationOptions] = useState(researches)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitting, setSubmitting] = useState(false)
 
-  const dirty = title.length > 0 || description.length > 0 || continuationID !== ''
+  const dirty = title.length > 0 || description.length > 0 || researchKind === 'continuation' || continuationID !== ''
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -52,7 +51,7 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
 
     const normalizedTitle = title.trim()
     const normalizedDescription = description.replaceAll('\r\n', '\n').trim()
-    const validationErrors = validateResearch(normalizedTitle, normalizedDescription)
+    const validationErrors = validateResearch(normalizedTitle, normalizedDescription, researchKind, continuationID)
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       focusFirstError(validationErrors)
@@ -67,7 +66,7 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
         body: {
           title,
           description,
-          continuationOfId: continuationID === '' ? null : Number(continuationID),
+          continuationOfId: researchKind === 'budget' ? null : Number(continuationID),
         },
       })
       if (result.error) {
@@ -93,7 +92,6 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
       case 'CONTINUATION_NOT_FOUND':
         setContinuationID('')
         setErrors({ continuation: 'งานวิจัยต้นทางไม่มีอยู่แล้ว กรุณาเลือกใหม่' })
-        await refreshContinuationOptions()
         continuationRef.current?.focus()
         break
       case 'VALIDATION_ERROR':
@@ -108,24 +106,16 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
     }
   }
 
-  async function refreshContinuationOptions() {
-    try {
-      const result = await listResearches()
-      if (!result.error) setContinuationOptions(result.data)
-    } catch {
-      // The actionable continuation error remains visible when refresh fails.
-    }
-  }
-
   function focusFirstError(validationErrors: FieldErrors) {
     if (validationErrors.title) titleRef.current?.focus()
     else if (validationErrors.description) descriptionRef.current?.focus()
+    else if (validationErrors.continuation) continuationRef.current?.focus()
   }
 
   return (
     <dialog
       ref={dialogRef}
-      className="research-dialog"
+      className="research-dialog create-research-dialog"
       aria-labelledby="create-dialog-title"
       aria-describedby="create-dialog-summary"
       onCancel={(event) => {
@@ -137,15 +127,21 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
         <div>
           <p className="dialog-kicker">รายการใหม่</p>
           <h2 id="create-dialog-title">เพิ่มงานวิจัย</h2>
-          <p id="create-dialog-summary">กรอกข้อมูลที่จำเป็นและระบุว่าเป็นงานต้นฉบับหรืองานต่อเนื่อง</p>
+          <p id="create-dialog-summary">บันทึกข้อมูลหลักก่อน แล้วระบุว่างานนี้เริ่มต้นเองหรือต่อยอดจากรายการใด</p>
         </div>
         <button className="dialog-close" type="button" onClick={requestClose} disabled={submitting} aria-label="ปิดหน้าต่างเพิ่มงานวิจัย">
-          <span aria-hidden="true">×</span>
+          <span className="dialog-close-icon" aria-hidden="true">×</span>
+          <span className="dialog-close-label">ปิด</span>
         </button>
       </div>
 
-      <form className="research-form" onSubmit={handleSubmit} noValidate>
+      <form className="research-form" onSubmit={handleSubmit} noValidate aria-busy={submitting}>
         {errors.form && <div className="form-alert" role="alert">{errors.form}</div>}
+
+        <div className="create-intake-note">
+          <span aria-hidden="true">01</span>
+          <p><strong>เริ่มต้นที่ข้อมูลสำคัญ</strong> รหัสงานวิจัยจะถูกสร้างโดยระบบหลังบันทึกสำเร็จ</p>
+        </div>
 
         <div className="field-group">
           <div className="field-label-row">
@@ -166,6 +162,7 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
             aria-describedby={`research-title-help${errors.title ? ' research-title-error' : ''}`}
             placeholder="เช่น การพัฒนาระบบติดตามงานวิจัย"
             autoComplete="off"
+            disabled={submitting}
           />
           <p id="research-title-help" className="field-help">1–200 ตัวอักษร และห้ามมีเครื่องหมาย /</p>
           {errors.title && <p id="research-title-error" className="field-error">{errors.title}</p>}
@@ -189,33 +186,66 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
             aria-invalid={Boolean(errors.description)}
             aria-describedby={`research-description-help${errors.description ? ' research-description-error' : ''}`}
             placeholder="อธิบายวัตถุประสงค์หรือขอบเขตของงานวิจัย"
+            disabled={submitting}
           />
           <p id="research-description-help" className="field-help">1–5,000 ตัวอักษร สามารถขึ้นบรรทัดใหม่ได้</p>
           {errors.description && <p id="research-description-error" className="field-error">{errors.description}</p>}
         </div>
 
-        <div className="field-group">
-          <label htmlFor="research-continuation">งานวิจัยต้นทาง <span>จำเป็น</span></label>
-          <select
-            ref={continuationRef}
-            id="research-continuation"
-            name="continuationOfId"
-            value={continuationID}
-            onChange={(event) => {
-              setContinuationID(event.target.value)
-              if (errors.continuation) setErrors((current) => ({ ...current, continuation: undefined }))
-            }}
-            aria-invalid={Boolean(errors.continuation)}
-            aria-describedby={`research-continuation-help${errors.continuation ? ' research-continuation-error' : ''}`}
-          >
-            <option value="">งานวิจัยต้นฉบับ — ไม่มีงานวิจัยต้นทาง</option>
-            {continuationOptions.map((research) => (
-              <option value={research.id} key={research.id}>{research.title} — รหัส #{research.id}</option>
-            ))}
-          </select>
-          <p id="research-continuation-help" className="field-help">เลือกงานที่นำมาต่อยอด หรือเลือกงานวิจัยต้นฉบับ</p>
-          {errors.continuation && <p id="research-continuation-error" className="field-error">{errors.continuation}</p>}
-        </div>
+        <fieldset className="continuation-choice">
+          <legend>ลักษณะการดำเนินงาน</legend>
+          <label className="research-kind-option">
+            <input
+              type="radio"
+              name="researchKind"
+              value="budget"
+              checked={researchKind === 'budget'}
+              onChange={() => {
+                setResearchKind('budget')
+                setContinuationID('')
+                if (errors.continuation) setErrors((current) => ({ ...current, continuation: undefined }))
+              }}
+              disabled={submitting}
+            />
+            <span>โครงการที่เป็นงบประมาณ</span>
+          </label>
+          <label className="research-kind-option">
+            <input
+              type="radio"
+              name="researchKind"
+              value="continuation"
+              checked={researchKind === 'continuation'}
+              onChange={() => setResearchKind('continuation')}
+              disabled={submitting}
+              aria-controls="research-continuation"
+            />
+            <span>โครงการต่อเนื่อง</span>
+          </label>
+          {researchKind === 'continuation' && (
+            <div className="continuation-control">
+              <label htmlFor="research-continuation">ระบุรหัสโครงการก่อนหน้า <span aria-hidden="true">*</span></label>
+              <input
+                ref={continuationRef}
+                id="research-continuation"
+                name="continuationOfId"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={continuationID}
+                onChange={(event) => {
+                  setContinuationID(event.target.value)
+                  if (errors.continuation) setErrors((current) => ({ ...current, continuation: undefined }))
+                }}
+                aria-invalid={Boolean(errors.continuation)}
+                aria-describedby={errors.continuation ? 'research-continuation-error' : undefined}
+                autoComplete="off"
+                disabled={submitting}
+              />
+              {errors.continuation && <p id="research-continuation-error" className="field-error">{errors.continuation}</p>}
+            </div>
+          )}
+        </fieldset>
 
         <div className="dialog-actions">
           <button className="text-button" type="button" onClick={requestClose} disabled={submitting}>ยกเลิก</button>
@@ -228,7 +258,7 @@ export function CreateResearchDialog({ researches, onClose, onCreated }: CreateR
   )
 }
 
-function validateResearch(title: string, description: string): FieldErrors {
+function validateResearch(title: string, description: string, researchKind: 'budget' | 'continuation', continuationID: string): FieldErrors {
   const errors: FieldErrors = {}
   const titleLength = unicodeLength(title)
   const descriptionLength = unicodeLength(description)
@@ -240,6 +270,10 @@ function validateResearch(title: string, description: string): FieldErrors {
   if (descriptionLength === 0) errors.description = 'กรุณากรอกรายละเอียด'
   else if (descriptionLength > 5000) errors.description = 'รายละเอียดต้องไม่เกิน 5,000 ตัวอักษร'
   else if (containsForbiddenControl(description, true)) errors.description = 'รายละเอียดมีอักขระที่ระบบไม่รองรับ'
+
+  if (researchKind === 'continuation' && (!/^\d+$/.test(continuationID) || Number(continuationID) < 1 || !Number.isSafeInteger(Number(continuationID)))) {
+    errors.continuation = 'กรุณาระบุรหัสโครงการก่อนหน้าที่เป็นจำนวนเต็มบวก'
+  }
 
   return errors
 }
