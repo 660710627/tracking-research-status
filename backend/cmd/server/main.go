@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"path/filepath"
 
 	"github.com/660710627/my-research/internal/db"
 	"github.com/660710627/my-research/internal/handler"
@@ -27,13 +28,15 @@ func main() {
 	healthRepository := repo.NewHealthRepository(database)
 	healthService := service.NewHealthService(healthRepository)
 	researchRepository := repo.NewResearchRepository(database)
-	researchService := service.NewResearchService(researchRepository)
+	contractStager := service.NewLocalContractStager(filepath.Join("storage", "contracts"))
+	multipartResearchService := service.NewMultipartResearchService(researchRepository, contractStager)
+	multipartResearchHandler := handler.NewMultipartResearchHandler(multipartResearchService)
 	researchListService := service.NewResearchListService(researchRepository)
-	researchUpdateService := service.NewResearchUpdateService(researchRepository)
 	researchDeleteService := service.NewResearchDeleteService(researchRepository)
+	researchStatusService := service.NewResearchStatusService(researchRepository)
+	researchProcessService := service.NewResearchProcessService(researchRepository)
 	router := handler.NewRouter(handler.Dependencies{
-		Health: healthService, Researches: researchService, ResearchList: researchListService,
-		ResearchUpdate: researchUpdateService, ResearchDelete: researchDeleteService,
+		Health: healthService, MultipartResearch: multipartResearchHandler, ResearchList: researchListService, ResearchDelete: researchDeleteService, ResearchStatus: researchStatusService, ResearchProcess: researchProcessService,
 	})
 
 	if err := router.Run(":8080"); err != nil {

@@ -68,15 +68,16 @@
 - Authentication / user accounts
 - Deployment
 - Notificaton การแจ้งเตือนให้กับนักวิจัยเมื่องานวิจัยของตนถูกเปลี่ยนสถานะ
-- หน้าสำหรับดูสถานะและกระบวนการ
 - การส่งออกข้อมูลในรูปแบบ Excel
 
 ## Acceptance Criteria
 
 AC-1: ระบบสามารถเพิ่มงานวิจัยได้
-- เมื่อเรียก POST /api/v1/researches ด้วย title, description และ continuationOfId ที่ถูกต้อง
-  → ตอบ 201 พร้อม id, title, description, continuationOfId, status และ process
-- Request body ต้องมีฟิลด์ title, description และ continuationOfId ครบทุกฟิลด์ และห้ามมีฟิลด์อื่น
+- เมื่อเรียก POST /api/v1/researches ด้วย `multipart/form-data` ที่มีข้อมูลโครงการ, บุคลากร, แหล่งทุน และ PDF สัญญาครบถ้วน
+  → ตอบ 201 พร้อมข้อมูลล่าสุดทั้งหมด ยกเว้น binary ของไฟล์
+- ฟิลด์บังคับคือ `title`, `isSubsidized`, `projectMembers`, `fundingType`, `fundingSourceName`, `contractNumber`, `contractFile`, `projectType`, `researchKind`, `responsibleProjectUnit`, `responsibleBudgetUnit`, `startDate`, `endDate`, `budgetAmount`, `thaiAbstract`, `englishAbstract`, `objectives`, `keywords` และ `continuationOfId`; ห้ามมี part อื่น
+- `projectMembers` เป็น JSON array ใน form part เดียว แต่ละคนมี `fullName`, `email`, `affiliation`, `contributionPercent` และ `role`; ต้องมีหัวหน้าโครงการหนึ่งคนขึ้นไปและผู้ร่วมโครงการหนึ่งคนขึ้นไป
+- `contractFile` รับเฉพาะ `application/pdf` และขนาดไฟล์ไม่เกิน 20 MiB (20 × 1,024 × 1,024 bytes)
 - งานวิจัยต้นฉบับต้องส่ง continuationOfId เป็น null; ห้ามละฟิลด์นี้
 - continuationOfId ต้องเป็น null หรือ integer บวกที่อ้างถึงงานวิจัยที่มีอยู่
 - หาก continuationOfId อ้างถึงงานวิจัยที่ไม่มีอยู่
@@ -84,14 +85,15 @@ AC-1: ระบบสามารถเพิ่มงานวิจัยไ�
 - ห้าม client ส่ง id, status หรือ process
   → ตอบ 422 พร้อม code VALIDATION_ERROR
 - ระบบสร้าง id เป็น integer บวกที่ไม่ซ้ำและแก้ไขไม่ได้
-- id ต้องคงเดิมเมื่อแก้ไข title, description, status หรือ process
+- id ต้องคงเดิมเมื่อแก้ไขข้อมูลโครงการ, status หรือ process
 - ห้ามนำ id ของงานวิจัยที่ลบแล้วกลับมาใช้กับงานวิจัยใหม่
 - ลำดับ id ไม่จำเป็นต้องต่อเนื่องและสามารถมีช่องว่างได้
 - งานวิจัยใหม่ทุกงานมี status เริ่มต้นเป็น "กำลังดำเนินการ"
 - งานวิจัยใหม่ทุกงานมี process เริ่มต้นเป็น "สัญญาโครงการ"
 - "สัญญาโครงการ" ถูกนับเป็นกระบวนการแรกที่กำลังดำเนินการ ไม่ใช่ค่าก่อนเริ่มกระบวนการ
-- Response ต้องตรงกับข้อมูลที่บันทึกในฐานข้อมูล
-- การสร้าง id, การบันทึกข้อมูล, ความสัมพันธ์งานต่อเนื่อง, status และ process ต้องสำเร็จหรือล้มเหลวพร้อมกัน
+- Response ต้องตรงกับข้อมูลที่บันทึกในฐานข้อมูล รวม metadata ของสัญญา แต่ไม่ส่ง binary ของ PDF
+- browser เก็บ PDF ไว้ชั่วคราวก่อน submit; หากยกเลิก form ต้องไม่มีไฟล์หรือ metadata ถูกบันทึกที่ server
+- การสร้าง id, การบันทึกข้อมูลทั้งหมด, ความสัมพันธ์งานต่อเนื่อง, PDF, status และ process ต้องสำเร็จหรือล้มเหลวพร้อมกัน โดย server ต้องลบไฟล์ชั่วคราวเมื่อ transaction ล้มเหลว
 
 AC-2: ระบบรองรับงานวิจัยต่อเนื่องและกฎ title ซ้ำ
 - งานวิจัยต้นฉบับมี continuationOfId เป็น null
@@ -106,35 +108,28 @@ AC-2: ระบบรองรับงานวิจัยต่อเนื�
 - การตรวจ title ซ้ำเป็นแบบ case-sensitive หลังตัด Unicode whitespace
 - ฐานข้อมูลต้องบังคับ foreign key และกฎ title ซ้ำให้ถูกต้องแม้มี concurrent requests
 
-AC-3: ระบบตรวจสอบ title และ description
-- ต้องมีฟิลด์ title และ description
-- ทั้งสองค่าต้องเป็น string และห้ามเป็น null
-- ระบบตัด Unicode whitespace ที่หัวและท้ายก่อน validation และบันทึก
-- title หลังตัด whitespace ต้องมีความยาว 1–200 Unicode characters
-- title ห้ามมี newline, tab, NUL, control characters และ /
-- description หลังตัด whitespace ต้องมีความยาว 1–5,000 Unicode characters
-- description อนุญาต newline และ tab
-- description ห้ามมี NUL และ control characters อื่น
+AC-3: ระบบตรวจสอบข้อมูลโครงการและบุคลากร
+- ฟิลด์ข้อความที่บังคับทุกฟิลด์ตัด Unicode whitespace ที่หัวและท้ายก่อน validation และบันทึก ต้องยาว 1–1,000 Unicode characters และห้ามมี NUL/control characters; `title` ห้ามมี newline, tab และ `/`
+- `title`, `fundingSourceName`, `contractNumber`, `responsibleProjectUnit`, `responsibleBudgetUnit`, `thaiAbstract`, `englishAbstract`, `objectives`, `keywords`, `fullName` และ `affiliation` เป็นข้อความบังคับตามกฎข้างต้น
+- `email` ต้องเป็นอีเมลที่มีรูปแบบถูกต้องและยาวไม่เกิน 1,000 Unicode characters
+- `projectMembers` ต้องเป็น array ที่ไม่ว่าง, ทุกคนต้องมีข้อมูลครบ, `role` เป็น `LEAD` หรือ `CO_RESEARCHER`, มี `LEAD` อย่างน้อยหนึ่งคนและ `CO_RESEARCHER` อย่างน้อยหนึ่งคน
+- `contributionPercent` เป็นตัวเลขมากกว่า 0 และไม่เกิน 100 มีทศนิยมได้ไม่เกิน 2 ตำแหน่ง
+- `budgetAmount` เป็นจำนวนมากกว่า 0 มีทศนิยมได้ไม่เกิน 2 ตำแหน่ง
+- `startDate` และ `endDate` เป็นวันที่ พ.ศ. รูปแบบ `DD/MM/YYYY` และห้ามว่าง
+- `fundingType` เป็น `INTERNAL` หรือ `EXTERNAL`; `projectType` เป็น `RESEARCH` หรือ `ACADEMIC_SERVICE`; `researchKind` เป็น `BUDGET` หรือ `CONTINUATION`
+- `researchKind=BUDGET` ต้องมี `continuationOfId=null`; `researchKind=CONTINUATION` ต้องมี `continuationOfId` เป็น integer บวกที่มีอยู่
 - หากไม่ผ่านเงื่อนไข
   → ตอบ 422 พร้อม code VALIDATION_ERROR
 
 AC-4: ระบบตรวจสอบ request body
-- POST, PUT และ PATCH ต้องใช้ Content-Type: application/json
+- POST และ PUT ต้องใช้ Content-Type: multipart/form-data; PATCH ต้องใช้ Content-Type: application/json
 - ยอมรับ parameter เช่น application/json; charset=utf-8
 - การตรวจ media type ไม่สนใจตัวพิมพ์ใหญ่–เล็ก
 - หากไม่มี Content-Type หรือเป็นชนิดอื่น
   → ตอบ 415 พร้อม code UNSUPPORTED_MEDIA_TYPE
-- Body ว่างหรือมีเฉพาะ whitespace
-  → ตอบ 400 พร้อม code INVALID_JSON
-- JSON ไม่สมบูรณ์หรือ parse ไม่ได้
-  → ตอบ 400 พร้อม code INVALID_JSON
-- มีข้อมูลต่อท้าย JSON หรือมี JSON มากกว่าหนึ่งค่า
-  → ตอบ 400 พร้อม code INVALID_JSON
-- JSON ระดับบนสุดไม่ใช่ object
+- POST/PUT ที่ไม่มี part บังคับ, มี `projectMembers` ที่ไม่ใช่ JSON array เดียว, มี field ซ้ำ หรือมี part ที่ไม่รองรับ
   → ตอบ 422 พร้อม code VALIDATION_ERROR
-- JSON มี key ซ้ำหรือฟิลด์ที่ operation นั้นไม่รองรับ
-  → ตอบ 422 พร้อม code VALIDATION_ERROR
-- Request body มีขนาดเกิน 64 KiB
+- `contractFile` ที่เกิน 20 MiB หรือ PATCH request body ที่เกิน 64 KiB
   → ตอบ 413 พร้อม code PAYLOAD_TOO_LARGE
 
 AC-5: ระบบแสดงรายการงานวิจัยทั้งหมดได้
@@ -142,7 +137,7 @@ AC-5: ระบบแสดงรายการงานวิจัยทั�
   → ตอบ 200
 - Response มี Content-Type: application/json
 - Response เป็น JSON array
-- แต่ละรายการมีเฉพาะ id, title, description, continuationOfId, status และ process
+- แต่ละรายการมีข้อมูลโครงการ, บุคลากร, แหล่งทุน, metadata สัญญา, continuationOfId, status และ process ครบตาม contract โดยไม่มี binary ของ PDF
 - ระบบเรียงรายการตาม title จากน้อยไปมาก และใช้ id จากน้อยไปมากเป็นลำดับรองเมื่อ title ซ้ำ
 - หากไม่มีงานวิจัย
   → ตอบ 200 พร้อม []
@@ -152,22 +147,22 @@ AC-5: ระบบแสดงรายการงานวิจัยทั�
 - หากส่ง query parameter ใด
   → ตอบ 422 พร้อม code VALIDATION_ERROR
 
-AC-6: ระบบสามารถแก้ไข title และ description ของงานวิจัยได้
+AC-6: ระบบสามารถแก้ไขข้อมูลงานวิจัยได้
 - เมื่อเรียก PUT /api/v1/researches/{id} โดย {id} เป็น integer บวก
-- Request body ต้องมีเฉพาะ title และ description
-- ห้ามเปลี่ยน id, continuationOfId, status หรือ process ผ่าน endpoint นี้
-- การแก้ไขเป็นการแทน title และ description เดิมทั้งหมด
+- Request body ต้องมีข้อมูลที่แก้ไขได้และ PDF ครบทุก field เดียวกับ POST ยกเว้น `continuationOfId` และ `researchKind`
+- ห้ามเปลี่ยน id, continuationOfId, researchKind, status หรือ process ผ่าน endpoint นี้
+- การแก้ไขเป็นการแทนข้อมูลโครงการ, บุคลากร, แหล่งทุน และ PDF เดิมทั้งหมด
 - เมื่อพบงานวิจัยและข้อมูลใหม่ถูกต้อง
   → ตอบ 200 พร้อมข้อมูลล่าสุดทุกฟิลด์
 - หากไม่พบ id
   → ตอบ 404 พร้อม code RESEARCH_NOT_FOUND
 - หาก path id ไม่ใช่ integer บวก
   → ตอบ 422 พร้อม code VALIDATION_ERROR
-- งานวิจัยต้นฉบับที่ส่ง title เดิมสามารถแก้ไข description ได้ แม้มีงานวิจัยต่อเนื่องใช้ title เดียวกัน
+- งานวิจัยต้นฉบับที่ส่ง title เดิมสามารถแก้ไขข้อมูลอื่นได้ แม้มีงานวิจัยต่อเนื่องใช้ title เดียวกัน
 - หากงานวิจัยต้นฉบับเปลี่ยนเป็น title อื่น ต้องไม่ซ้ำกับงานวิจัยใดที่มีอยู่
   → ตอบ 409 พร้อม code TITLE_ALREADY_EXISTS
 - งานวิจัยต่อเนื่องสามารถเปลี่ยนไปใช้ title ที่ซ้ำได้
-- การแก้ไข title และ description ต้องสำเร็จหรือล้มเหลวพร้อมกันใน transaction เดียว
+- การแก้ไขข้อมูลและการแทน PDF ต้องสำเร็จหรือล้มเหลวพร้อมกัน; หากล้มเหลวต้องคงข้อมูลและไฟล์เดิมไว้
 
 AC-7: ระบบสามารถลบงานวิจัยได้
 - เมื่อเรียก DELETE /api/v1/researches/{id} โดย {id} เป็น integer บวกและลบสำเร็จ
@@ -261,14 +256,13 @@ GET  /health
      → 500 INTERNAL_ERROR
 
 GET  /api/v1/researches
-     → 200 [{id,title,description,continuationOfId,status,process}]
+     → 200 [Research]
      → 400 INVALID_REQUEST_BODY
      → 422 VALIDATION_ERROR
      → 500 INTERNAL_ERROR
 
-POST /api/v1/researches {title,description,continuationOfId}
-     → 201 {id,title,description,continuationOfId,status,process}
-     → 400 INVALID_JSON
+POST /api/v1/researches multipart/form-data ResearchInput + contractFile(PDF <= 20 MiB)
+     → 201 Research
      → 404 CONTINUATION_NOT_FOUND
      → 409 TITLE_ALREADY_EXISTS
      → 413 PAYLOAD_TOO_LARGE
@@ -276,9 +270,8 @@ POST /api/v1/researches {title,description,continuationOfId}
      → 422 VALIDATION_ERROR
      → 500 INTERNAL_ERROR
 
-PUT  /api/v1/researches/{id} {title,description}
-     → 200 {id,title,description,continuationOfId,status,process}
-     → 400 INVALID_JSON
+PUT  /api/v1/researches/{id} multipart/form-data ResearchInput + contractFile(PDF <= 20 MiB)
+     → 200 Research
      → 404 RESEARCH_NOT_FOUND
      → 409 TITLE_ALREADY_EXISTS
      → 413 PAYLOAD_TOO_LARGE
@@ -295,7 +288,7 @@ DELETE /api/v1/researches/{id}
        → 500 INTERNAL_ERROR
 
 PATCH /api/v1/researches/{id}/status {status}
-      → 200 {id,title,description,continuationOfId,status,process}
+      → 200 Research
       → 400 INVALID_JSON
       → 404 RESEARCH_NOT_FOUND
       → 409 INVALID_STATUS_TRANSITION | PROJECT_ALREADY_ENDED
@@ -305,7 +298,7 @@ PATCH /api/v1/researches/{id}/status {status}
       → 500 INTERNAL_ERROR
 
 PATCH /api/v1/researches/{id}/process {process}
-      → 200 {id,title,description,continuationOfId,status,process}
+      → 200 Research
       → 400 INVALID_JSON
       → 404 RESEARCH_NOT_FOUND
       → 409 INVALID_PROCESS_TRANSITION | PROJECT_ALREADY_ENDED
@@ -319,13 +312,16 @@ PATCH /api/v1/researches/{id}/process {process}
      → 405 METHOD_NOT_ALLOWED
 
 ## SQL
-- ตาราง `researches` ต้องมี `id`, `title`, `description`, `continuation_of_id`, `status` และ `process`
+- ก่อน migration นี้ให้ล้างข้อมูลเก่าจากตารางงานวิจัย, บุคลากร, แหล่งทุน และ metadata ไฟล์ที่เกี่ยวข้อง รวมถึงลบไฟล์สัญญาเดิมจากพื้นที่จัดเก็บ
+- ตาราง `researches` ต้องมี `id`, `title`, `is_subsidized`, `project_type`, `research_kind`, `continuation_of_id`, `responsible_project_unit`, `responsible_budget_unit`, `start_date`, `end_date`, `budget_amount`, `thai_abstract`, `english_abstract`, `objectives`, `keywords`, `status` และ `process`
 - `id` เป็น integer บวกที่ SQLite สร้าง เป็น primary key แบบไม่ใช้ค่าซ้ำหลังลบ และห้ามแก้ไข
 - `continuation_of_id` เป็น nullable self-reference foreign key; ห้ามแก้ไข และใช้ `ON UPDATE RESTRICT` กับ `ON DELETE RESTRICT`
-- `title` และ `description` เป็น `NOT NULL` และฐานข้อมูลต้องตรวจค่าที่ตัด Unicode whitespace แล้ว ความยาว และอักขระต้องห้ามตาม AC-3
+- ตาราง `research_members` เป็นความสัมพันธ์หนึ่งต่อหลายกับ `researches`; เก็บ `full_name`, `email`, `affiliation`, `contribution_percent` และ `role` แบบ `NOT NULL` โดย role อยู่ใน `LEAD`,`CO_RESEARCHER` และ percentage อยู่ใน `(0,100]` มีทศนิยมไม่เกิน 2 ตำแหน่ง
+- ตาราง `research_contracts` เป็นหนึ่งต่อหนึ่งกับ `researches`; เก็บ `funding_type`, `funding_source_name`, `contract_number`, `storage_path`, `original_filename`, `content_type`, `size_bytes` และบังคับ `content_type='application/pdf'`, `size_bytes <= 20971520`
+- ข้อมูลข้อความใหม่เป็น `NOT NULL` และบังคับความยาว/อักขระตาม AC-3; `budget_amount > 0` และมี precision 2 ตำแหน่ง; วันจัดเก็บแบบ canonical ที่ตรวจสอบได้ แต่ API รับ/ตอบ `DD/MM/YYYY` ปี พ.ศ.
 - `status` เป็น `NOT NULL` ค่าเริ่มต้น "กำลังดำเนินการ" และรับเฉพาะหกค่าที่ระบุใน AC-8
 - `process` เป็น `NOT NULL` ค่าเริ่มต้น "สัญญาโครงการ" และรับเฉพาะแปดค่าที่ระบุใน AC-9
 - constraint/index/trigger ต้องบังคับกฎ title ของงานต้นฉบับและงานต่อเนื่องให้ถูกต้องภายใต้ concurrent writes
 - trigger ต้องห้ามแก้ `id` และ `continuation_of_id` หลังสร้าง
 - trigger ต้องบังคับ status transition, process transition, terminal lock และการคง process เดิมเมื่อเข้าสู่ terminal status ตาม AC-8 และ AC-9
-- ทุก connection ต้องเปิด foreign keys และทุก mutation ต้องทำใน transaction แบบ atomic
+- ทุก connection ต้องเปิด foreign keys และทุก mutation ต้องทำใน transaction แบบ atomic; การเขียนไฟล์ใช้ temporary location ก่อน แล้วจึง publish พร้อม metadata หลัง validation/transaction สำเร็จ และต้องลบ temporary file ทุกครั้งที่ล้มเหลว

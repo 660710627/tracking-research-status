@@ -24,13 +24,5 @@ func (service *ResearchListService) List(ctx context.Context) ([]Research, error
 	if err != nil {
 		return nil, fmt.Errorf("%w: list researches", ErrInternal)
 	}
-
-	researches := make([]Research, 0, len(stored))
-	for _, research := range stored {
-		researches = append(researches, Research{
-			ID: research.ID, Title: research.Title, Description: research.Description,
-			ContinuationOfID: research.ContinuationOfID, Status: research.Status, Process: research.Process,
-		})
-	}
-	return researches, nil
+	return stored, nil
 }

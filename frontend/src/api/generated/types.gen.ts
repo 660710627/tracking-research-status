@@ -11,21 +11,78 @@ export type HealthResponse = {
 export type Research = {
     id: ResearchId;
     title: ResearchTitle;
-    description: ResearchDescription;
     continuationOfId: NullableResearchId;
+    isSubsidized: boolean;
+    projectMembers: Array<ResearchMember>;
+    fundingType: FundingType;
+    fundingSourceName: ResearchText;
+    contractNumber: ResearchText;
+    contractFile: ContractFileMetadata;
+    projectType: ProjectType;
+    researchKind: ResearchKind;
+    responsibleProjectUnit: ResearchText;
+    responsibleBudgetUnit: ResearchText;
+    startDate: BuddhistDate;
+    endDate: BuddhistDate;
+    budgetAmount: BudgetAmount;
+    thaiAbstract: ResearchText;
+    englishAbstract: ResearchText;
+    objectives: ResearchText;
+    keywords: ResearchText;
     status: ResearchStatus;
     process: ResearchProcess;
 };
 
 export type CreateResearchRequest = {
     title: ResearchTitle;
-    description: ResearchDescription;
     continuationOfId: NullableResearchId;
+    isSubsidized: boolean;
+    /**
+     * Exactly one form part containing a JSON array. The array must contain
+     * at least one LEAD and at least one CO_RESEARCHER.
+     *
+     */
+    projectMembers: Array<ResearchMember>;
+    fundingType: FundingType;
+    fundingSourceName: ResearchText;
+    contractNumber: ResearchText;
+    contractFile: ContractFile;
+    projectType: ProjectType;
+    researchKind: ResearchKind;
+    responsibleProjectUnit: ResearchText;
+    responsibleBudgetUnit: ResearchText;
+    startDate: BuddhistDate;
+    endDate: BuddhistDate;
+    budgetAmount: BudgetAmount;
+    thaiAbstract: ResearchText;
+    englishAbstract: ResearchText;
+    objectives: ResearchText;
+    keywords: ResearchText;
 };
 
 export type UpdateResearchRequest = {
     title: ResearchTitle;
-    description: ResearchDescription;
+    isSubsidized: boolean;
+    /**
+     * Exactly one form part containing a JSON array. The array must contain
+     * at least one LEAD and at least one CO_RESEARCHER.
+     *
+     */
+    projectMembers: Array<ResearchMember>;
+    fundingType: FundingType;
+    fundingSourceName: ResearchText;
+    contractNumber: ResearchText;
+    contractFile: ContractFile;
+    projectType: ProjectType;
+    responsibleProjectUnit: ResearchText;
+    responsibleBudgetUnit: ResearchText;
+    startDate: BuddhistDate;
+    endDate: BuddhistDate;
+    budgetAmount: BudgetAmount;
+    thaiAbstract: ResearchText;
+    englishAbstract: ResearchText;
+    objectives: ResearchText;
+    keywords: ResearchText;
 };
 
 export type UpdateStatusRequest = {
@@ -55,11 +112,46 @@ export type NullableResearchId = number | null;
 export type ResearchTitle = string;
 
 /**
- * Unicode whitespace is trimmed before validation and storage. Newline and
- * tab are allowed; NUL and other control characters are forbidden.
+ * Unicode whitespace is trimmed before validation and storage. NUL and
+ * control characters are forbidden.
  *
  */
-export type ResearchDescription = string;
+export type ResearchText = string;
+
+export type ResearchMember = {
+    fullName: ResearchText;
+    email: string;
+    affiliation: ResearchText;
+    contributionPercent: number;
+    role: 'LEAD' | 'CO_RESEARCHER';
+};
+
+export type FundingType = 'INTERNAL' | 'EXTERNAL';
+
+export type ProjectType = 'RESEARCH' | 'ACADEMIC_SERVICE';
+
+export type ResearchKind = 'BUDGET' | 'CONTINUATION';
+
+/**
+ * Date in DD/MM/YYYY Buddhist Era format.
+ */
+export type BuddhistDate = string;
+
+/**
+ * Positive Thai baht amount with at most two decimal places.
+ */
+export type BudgetAmount = number;
+
+/**
+ * PDF contract file, maximum 20 MiB (20,971,520 bytes).
+ */
+export type ContractFile = Blob | File;
+
+export type ContractFileMetadata = {
+    filename: ResearchText;
+    contentType: 'application/pdf';
+    sizeBytes: number;
+};
 
 export type ResearchStatus = 'กำลังดำเนินการ' | 'กำลังดำเนินการ (ขยายเวลาครั้งที่ 1)' | 'กำลังดำเนินการ (ขยายเวลาครั้งที่ 2)' | 'กำลังดำเนินการ (ขยายเวลามากกว่า 2 ครั้ง)' | 'โครงการเสร็จสิ้น' | 'ยุติโครงการ';
 
@@ -152,12 +244,6 @@ export type CreateResearchData = {
 
 export type CreateResearchErrors = {
     /**
-     * The body is empty or whitespace-only, malformed, has trailing data, or
-     * contains more than one JSON value.
-     *
-     */
-    400: ErrorResponse;
-    /**
      * continuationOfId does not reference an existing research.
      */
     404: ErrorResponse;
@@ -166,11 +252,13 @@ export type CreateResearchErrors = {
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB for a contract
+     * PDF in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
@@ -258,12 +346,6 @@ export type UpdateResearchData = {
 
 export type UpdateResearchErrors = {
     /**
-     * The body is empty or whitespace-only, malformed, has trailing data, or
-     * contains more than one JSON value.
-     *
-     */
-    400: ErrorResponse;
-    /**
      * No research has the supplied positive ID.
      */
     404: ErrorResponse;
@@ -272,11 +354,13 @@ export type UpdateResearchErrors = {
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB for a contract
+     * PDF in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
@@ -332,11 +416,13 @@ export type UpdateResearchStatusErrors = {
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB for a contract
+     * PDF in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
@@ -392,11 +478,13 @@ export type UpdateResearchProcessErrors = {
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB for a contract
+     * PDF in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**

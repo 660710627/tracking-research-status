@@ -14,11 +14,10 @@ info:
     `404 ROUTE_NOT_FOUND`; unsupported methods on known routes return
     `405 METHOD_NOT_ALLOWED`.
 
-    POST, PUT, and PATCH accept one JSON object only. Content-Type must be
-    application/json, may include parameters such as charset=utf-8, and is
-    matched case-insensitively. Duplicate keys, unknown fields, and non-object
-    top-level JSON values are rejected. The raw request body limit is 64 KiB
-    (65,536 bytes).
+    POST and PUT accept multipart/form-data with one PDF contract file; PATCH
+    accepts one JSON object. Media types are matched case-insensitively. JSON
+    duplicate keys, unknown fields, and non-object top-level values are
+    rejected. The PDF limit is 20 MiB and the PATCH JSON limit is 64 KiB.
 security: []
 servers:
   - url: /
@@ -82,7 +81,7 @@ paths:
       operationId: createResearch
       summary: Create a research
       description: |
-        Creates one research atomically. The server generates a positive,
+        Creates one research atomically from multipart form data. The server generates a positive,
         immutable, unique ID that is never reused after deletion. Status starts
         at "กำลังดำเนินการ" and process starts at "สัญญาโครงการ".
 
@@ -90,14 +89,20 @@ paths:
         sends the positive ID of an existing research. The referenced research
         may already be completed or terminated. A root title cannot duplicate
         any existing trimmed title. Continuations may use duplicate titles.
-        Title comparison is case-sensitive after Unicode trimming.
+        Title comparison is case-sensitive after Unicode trimming. Every required
+        form part occurs exactly once; unknown or duplicate parts, including a
+        projectMembers part that is not one JSON array, are validation errors.
       requestBody:
         required: true
-        x-max-body-bytes: 65536
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/CreateResearchRequest"
+            encoding:
+              projectMembers:
+                contentType: application/json
+              contractFile:
+                contentType: application/pdf
       responses:
         "201":
           description: The research was created and persisted successfully.
@@ -105,8 +110,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
-        "400":
-          $ref: "#/components/responses/InvalidJson"
         "404":
           $ref: "#/components/responses/ContinuationNotFound"
         "409":
@@ -130,18 +133,25 @@ paths:
       operationId: updateResearch
       summary: Replace research details
       description: |
-        Atomically replaces title and description only. ID, continuationOfId,
-        status, and process remain unchanged. A root may retain its current title
-        while changing description even when a continuation has the same title.
+        Atomically replaces all editable data and the contract PDF. ID,
+        continuationOfId, researchKind, status, and process remain unchanged. A root may retain its current title
+        while changing other data even when a continuation has the same title.
         If a root changes its title, the new trimmed title cannot duplicate any
         existing research title. A continuation may change to a duplicate title.
+        Every required form part occurs exactly once; unknown or duplicate parts,
+        including a projectMembers part that is not one JSON array, are validation
+        errors.
       requestBody:
         required: true
-        x-max-body-bytes: 65536
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/UpdateResearchRequest"
+            encoding:
+              projectMembers:
+                contentType: application/json
+              contractFile:
+                contentType: application/pdf
       responses:
         "200":
           description: The research details were replaced successfully.
@@ -149,8 +159,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
-        "400":
-          $ref: "#/components/responses/InvalidJson"
         "404":
           $ref: "#/components/responses/ResearchNotFound"
         "409":
@@ -309,8 +317,24 @@ components:
       required:
         - id
         - title
-        - description
         - continuationOfId
+        - isSubsidized
+        - projectMembers
+        - fundingType
+        - fundingSourceName
+        - contractNumber
+        - contractFile
+        - projectType
+        - researchKind
+        - responsibleProjectUnit
+        - responsibleBudgetUnit
+        - startDate
+        - endDate
+        - budgetAmount
+        - thaiAbstract
+        - englishAbstract
+        - objectives
+        - keywords
         - status
         - process
       properties:
@@ -318,10 +342,44 @@ components:
           $ref: "#/components/schemas/ResearchId"
         title:
           $ref: "#/components/schemas/ResearchTitle"
-        description:
-          $ref: "#/components/schemas/ResearchDescription"
         continuationOfId:
           $ref: "#/components/schemas/NullableResearchId"
+        isSubsidized:
+          type: boolean
+        projectMembers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchMember"
+        fundingType:
+          $ref: "#/components/schemas/FundingType"
+        fundingSourceName:
+          $ref: "#/components/schemas/ResearchText"
+        contractNumber:
+          $ref: "#/components/schemas/ResearchText"
+        contractFile:
+          $ref: "#/components/schemas/ContractFileMetadata"
+        projectType:
+          $ref: "#/components/schemas/ProjectType"
+        researchKind:
+          $ref: "#/components/schemas/ResearchKind"
+        responsibleProjectUnit:
+          $ref: "#/components/schemas/ResearchText"
+        responsibleBudgetUnit:
+          $ref: "#/components/schemas/ResearchText"
+        startDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        endDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        budgetAmount:
+          $ref: "#/components/schemas/BudgetAmount"
+        thaiAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        englishAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        objectives:
+          $ref: "#/components/schemas/ResearchText"
+        keywords:
+          $ref: "#/components/schemas/ResearchText"
         status:
           $ref: "#/components/schemas/ResearchStatus"
         process:
@@ -332,27 +390,132 @@ components:
       additionalProperties: false
       required:
         - title
-        - description
         - continuationOfId
+        - isSubsidized
+        - projectMembers
+        - fundingType
+        - fundingSourceName
+        - contractNumber
+        - contractFile
+        - projectType
+        - researchKind
+        - responsibleProjectUnit
+        - responsibleBudgetUnit
+        - startDate
+        - endDate
+        - budgetAmount
+        - thaiAbstract
+        - englishAbstract
+        - objectives
+        - keywords
       properties:
         title:
           $ref: "#/components/schemas/ResearchTitle"
-        description:
-          $ref: "#/components/schemas/ResearchDescription"
         continuationOfId:
           $ref: "#/components/schemas/NullableResearchId"
+        isSubsidized:
+          type: boolean
+        projectMembers:
+          type: array
+          minItems: 2
+          description: |
+            Exactly one form part containing a JSON array. The array must contain
+            at least one LEAD and at least one CO_RESEARCHER.
+          items:
+            $ref: "#/components/schemas/ResearchMember"
+        fundingType:
+          $ref: "#/components/schemas/FundingType"
+        fundingSourceName:
+          $ref: "#/components/schemas/ResearchText"
+        contractNumber:
+          $ref: "#/components/schemas/ResearchText"
+        contractFile:
+          $ref: "#/components/schemas/ContractFile"
+        projectType:
+          $ref: "#/components/schemas/ProjectType"
+        researchKind:
+          $ref: "#/components/schemas/ResearchKind"
+        responsibleProjectUnit:
+          $ref: "#/components/schemas/ResearchText"
+        responsibleBudgetUnit:
+          $ref: "#/components/schemas/ResearchText"
+        startDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        endDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        budgetAmount:
+          $ref: "#/components/schemas/BudgetAmount"
+        thaiAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        englishAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        objectives:
+          $ref: "#/components/schemas/ResearchText"
+        keywords:
+          $ref: "#/components/schemas/ResearchText"
 
     UpdateResearchRequest:
       type: object
       additionalProperties: false
       required:
         - title
-        - description
+        - isSubsidized
+        - projectMembers
+        - fundingType
+        - fundingSourceName
+        - contractNumber
+        - contractFile
+        - projectType
+        - responsibleProjectUnit
+        - responsibleBudgetUnit
+        - startDate
+        - endDate
+        - budgetAmount
+        - thaiAbstract
+        - englishAbstract
+        - objectives
+        - keywords
       properties:
         title:
           $ref: "#/components/schemas/ResearchTitle"
-        description:
-          $ref: "#/components/schemas/ResearchDescription"
+        isSubsidized:
+          type: boolean
+        projectMembers:
+          type: array
+          minItems: 2
+          description: |
+            Exactly one form part containing a JSON array. The array must contain
+            at least one LEAD and at least one CO_RESEARCHER.
+          items:
+            $ref: "#/components/schemas/ResearchMember"
+        fundingType:
+          $ref: "#/components/schemas/FundingType"
+        fundingSourceName:
+          $ref: "#/components/schemas/ResearchText"
+        contractNumber:
+          $ref: "#/components/schemas/ResearchText"
+        contractFile:
+          $ref: "#/components/schemas/ContractFile"
+        projectType:
+          $ref: "#/components/schemas/ProjectType"
+        responsibleProjectUnit:
+          $ref: "#/components/schemas/ResearchText"
+        responsibleBudgetUnit:
+          $ref: "#/components/schemas/ResearchText"
+        startDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        endDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        budgetAmount:
+          $ref: "#/components/schemas/BudgetAmount"
+        thaiAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        englishAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        objectives:
+          $ref: "#/components/schemas/ResearchText"
+        keywords:
+          $ref: "#/components/schemas/ResearchText"
 
     UpdateStatusRequest:
       type: object
@@ -390,7 +553,7 @@ components:
     ResearchTitle:
       type: string
       minLength: 1
-      maxLength: 200
+      maxLength: 1000
       pattern: '^[^/\x00-\x1F\x7F]+$'
       description: |
         Unicode whitespace is trimmed before validation and storage. Newline,
@@ -398,14 +561,87 @@ components:
         comparison is case-sensitive after trimming; continuation rules decide
         whether a duplicate is permitted.
 
-    ResearchDescription:
+    ResearchText:
       type: string
       minLength: 1
-      maxLength: 5000
+      maxLength: 1000
       pattern: '^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+$'
       description: |
-        Unicode whitespace is trimmed before validation and storage. Newline and
-        tab are allowed; NUL and other control characters are forbidden.
+        Unicode whitespace is trimmed before validation and storage. NUL and
+        control characters are forbidden.
+
+    ResearchMember:
+      type: object
+      additionalProperties: false
+      required:
+        - fullName
+        - email
+        - affiliation
+        - contributionPercent
+        - role
+      properties:
+        fullName:
+          $ref: "#/components/schemas/ResearchText"
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 1000
+        affiliation:
+          $ref: "#/components/schemas/ResearchText"
+        contributionPercent:
+          type: number
+          minimum: 0.01
+          maximum: 100
+          multipleOf: 0.01
+        role:
+          type: string
+          enum: [LEAD, CO_RESEARCHER]
+
+    FundingType:
+      type: string
+      enum: [INTERNAL, EXTERNAL]
+
+    ProjectType:
+      type: string
+      enum: [RESEARCH, ACADEMIC_SERVICE]
+
+    ResearchKind:
+      type: string
+      enum: [BUDGET, CONTINUATION]
+
+    BuddhistDate:
+      type: string
+      pattern: '^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$'
+      description: Date in DD/MM/YYYY Buddhist Era format.
+
+    BudgetAmount:
+      type: number
+      minimum: 0.01
+      multipleOf: 0.01
+      description: Positive Thai baht amount with at most two decimal places.
+
+    ContractFile:
+      type: string
+      format: binary
+      description: PDF contract file, maximum 20 MiB (20,971,520 bytes).
+      x-allowed-media-types: [application/pdf]
+      x-max-file-bytes: 20971520
+
+    ContractFileMetadata:
+      type: object
+      additionalProperties: false
+      required: [filename, contentType, sizeBytes]
+      properties:
+        filename:
+          $ref: "#/components/schemas/ResearchText"
+        contentType:
+          type: string
+          const: application/pdf
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 20971520
 
     ResearchStatus:
       type: string
@@ -516,7 +752,9 @@ components:
               message: This operation does not accept a request body.
 
     PayloadTooLarge:
-      description: The raw request body exceeds 64 KiB (65,536 bytes).
+      description: |
+        The request payload exceeds the operation limit: 20 MiB for a contract
+        PDF in POST/PUT, or 64 KiB for a PATCH JSON body.
       content:
         application/json:
           schema:
@@ -524,7 +762,7 @@ components:
           example:
             error:
               code: PAYLOAD_TOO_LARGE
-              message: Request body exceeds 64 KiB.
+              message: Request payload exceeds the allowed size.
 
     ProcessConflict:
       description: |
@@ -611,7 +849,7 @@ components:
               message: A research with this title already exists.
 
     UnsupportedMediaType:
-      description: Content-Type is missing or is not application/json.
+      description: Content-Type is missing or does not match the operation's required media type.
       content:
         application/json:
           schema:
@@ -619,7 +857,7 @@ components:
           example:
             error:
               code: UNSUPPORTED_MEDIA_TYPE
-              message: Content-Type must be application/json.
+              message: Content-Type is not supported for this operation.
 
     ValidationError:
       description: |
