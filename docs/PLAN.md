@@ -5,7 +5,7 @@
 - รองรับ health check และ CRUD งานวิจัยด้วย `id` ที่ระบบสร้างและเปลี่ยนไม่ได้
 - ข้อมูลงานวิจัยประกอบด้วย `id`, `title`, `description`, `continuationOfId`, `status` และ `process`
 - รองรับงานวิจัยต่อเนื่อง ชื่อซ้ำตามกฎใน SPEC การปรับสถานะ และการเดินกระบวนการไปข้างหน้า
-- ไม่รวม authentication, notification, deployment และหน้า UI สำหรับดูหรือปรับสถานะและกระบวนการ
+- ไม่รวม authentication, notification, deployment 
 
 ## Contract first
 
@@ -26,7 +26,6 @@
 - โครงสร้างเป็น React pages → components → generated typed API client
 - หน้า CRUD ใช้ `id` ระบุรายการ แม้ชื่อซ้ำกันได้ และแสดง loading, error, empty และ success state
 - component ห้ามเรียก `fetch` โดยตรง และห้ามสร้าง endpoint นอก OpenAPI
-- ยังไม่สร้างหน้าดูหรือปรับ status/process ตาม Out of scope ของ MVP
 
 ## Error handling
 
