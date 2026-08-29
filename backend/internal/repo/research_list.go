@@ -6,10 +6,7 @@ import (
 )
 
 func (repository *ResearchRepository) List(ctx context.Context) ([]Research, error) {
-	rows, err := repository.database.QueryContext(ctx, `
-		SELECT id, title, description, continuation_of_id, status, process
-		FROM researches
-		ORDER BY title ASC, id ASC`)
+	rows, err := repository.database.QueryContext(ctx, `SELECT id FROM researches ORDER BY title ASC, id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("query researches: %w", err)
 	}
@@ -17,7 +14,11 @@ func (repository *ResearchRepository) List(ctx context.Context) ([]Research, err
 
 	researches := make([]Research, 0)
 	for rows.Next() {
-		research, err := scanResearch(rows)
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan research id: %w", err)
+		}
+		research, err := loadResearch(ctx, repository.database, id)
 		if err != nil {
 			return nil, fmt.Errorf("scan research: %w", err)
 		}

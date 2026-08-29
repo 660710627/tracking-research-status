@@ -1,0 +1,63 @@
+name: Quality Gates
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.6'
+          cache-dependency-path: backend/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.13.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Validate OpenAPI
+        run: npx @redocly/cli lint docs/openapi.yaml
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Install Go quality tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.10.1
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.23.0
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+      - name: Lint and scan backend
+        working-directory: backend
+        run: |
+          golangci-lint run
+          gosec ./...
+          govulncheck ./...
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Verify generated API client
+        working-directory: frontend
+        run: |
+          npm run generate:api
+          git diff --exit-code -- src/api/generated
+
+      - name: Lint and build frontend
+        working-directory: frontend
+        run: |
+          npm run lint
+          npm run build
