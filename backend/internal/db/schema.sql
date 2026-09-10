@@ -1,19 +1,19 @@
 CREATE TABLE IF NOT EXISTS researches (
     id INTEGER PRIMARY KEY AUTOINCREMENT CHECK (id > 0),
-    title TEXT NOT NULL CHECK (research_text_valid(title, 1)),
+    title TEXT NOT NULL CHECK (instr(title, char(0)) = 0 AND research_text_valid(title, 1)),
     is_subsidized INTEGER NOT NULL CHECK (is_subsidized IN (0, 1)),
     project_type TEXT NOT NULL CHECK (project_type IN ('RESEARCH', 'ACADEMIC_SERVICE')),
     research_kind TEXT NOT NULL CHECK (research_kind IN ('BUDGET', 'CONTINUATION')),
     continuation_of_id INTEGER REFERENCES researches(id) ON UPDATE RESTRICT ON DELETE RESTRICT,
-    responsible_project_unit TEXT NOT NULL CHECK (research_text_valid(responsible_project_unit, 0)),
-    responsible_budget_unit TEXT NOT NULL CHECK (research_text_valid(responsible_budget_unit, 0)),
+    responsible_project_unit TEXT NOT NULL CHECK (instr(responsible_project_unit, char(0)) = 0 AND research_text_valid(responsible_project_unit, 0)),
+    responsible_budget_unit TEXT NOT NULL CHECK (instr(responsible_budget_unit, char(0)) = 0 AND research_text_valid(responsible_budget_unit, 0)),
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
     budget_amount REAL NOT NULL CHECK (research_decimal_valid(budget_amount)),
-    thai_abstract TEXT NOT NULL CHECK (research_text_valid(thai_abstract, 0)),
-    english_abstract TEXT NOT NULL CHECK (research_text_valid(english_abstract, 0)),
-    objectives TEXT NOT NULL CHECK (research_text_valid(objectives, 0)),
-    keywords TEXT NOT NULL CHECK (research_text_valid(keywords, 0)),
+    thai_abstract TEXT NOT NULL CHECK (instr(thai_abstract, char(0)) = 0 AND research_text_valid(thai_abstract, 0)),
+    english_abstract TEXT NOT NULL CHECK (instr(english_abstract, char(0)) = 0 AND research_text_valid(english_abstract, 0)),
+    objectives TEXT NOT NULL CHECK (instr(objectives, char(0)) = 0 AND research_text_valid(objectives, 0)),
+    keywords TEXT NOT NULL CHECK (instr(keywords, char(0)) = 0 AND research_text_valid(keywords, 0)),
     status TEXT NOT NULL DEFAULT 'กำลังดำเนินการ' CHECK (status IN (
         'กำลังดำเนินการ', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)',
         'กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)', 'กำลังดำเนินการ(ขยายเวลามากกว่า 2 ครั้ง)',
@@ -48,9 +48,9 @@ END;
 
 CREATE TABLE IF NOT EXISTS research_members (
     research_id INTEGER NOT NULL REFERENCES researches(id) ON UPDATE RESTRICT ON DELETE RESTRICT,
-    full_name TEXT NOT NULL CHECK (research_text_valid(full_name, 0)),
+    full_name TEXT NOT NULL CHECK (instr(full_name, char(0)) = 0 AND research_text_valid(full_name, 0)),
     email TEXT NOT NULL CHECK (research_email_valid(email)),
-    affiliation TEXT NOT NULL CHECK (research_text_valid(affiliation, 0)),
+    affiliation TEXT NOT NULL CHECK (instr(affiliation, char(0)) = 0 AND research_text_valid(affiliation, 0)),
     contribution_percent REAL NOT NULL CHECK (
         research_decimal_valid(contribution_percent) AND contribution_percent <= 100),
     role TEXT NOT NULL CHECK (role IN ('LEAD', 'CO_RESEARCHER')),
@@ -63,11 +63,11 @@ ON research_members(research_id, research_email_key(email));
 CREATE TABLE IF NOT EXISTS research_contracts (
     research_id INTEGER PRIMARY KEY REFERENCES researches(id) ON UPDATE RESTRICT ON DELETE RESTRICT,
     funding_type TEXT NOT NULL CHECK (funding_type IN ('INTERNAL', 'EXTERNAL')),
-    funding_source_name TEXT NOT NULL CHECK (research_text_valid(funding_source_name, 0)),
-    contract_number TEXT NOT NULL CHECK (research_text_valid(contract_number, 0)),
+    funding_source_name TEXT NOT NULL CHECK (instr(funding_source_name, char(0)) = 0 AND research_text_valid(funding_source_name, 0)),
+    contract_number TEXT NOT NULL CHECK (instr(contract_number, char(0)) = 0 AND research_text_valid(contract_number, 0)),
     contract_number_key TEXT NOT NULL UNIQUE CHECK (length(contract_number_key) > 0),
     storage_path TEXT NOT NULL CHECK (length(research_trim(storage_path)) > 0),
-    original_filename TEXT NOT NULL CHECK (research_text_valid(original_filename, 0)),
+    original_filename TEXT NOT NULL CHECK (instr(original_filename, char(0)) = 0 AND research_text_valid(original_filename, 0)),
     content_type TEXT NOT NULL CHECK (content_type = 'application/pdf'),
     size_bytes INTEGER NOT NULL CHECK (typeof(size_bytes) = 'integer' AND size_bytes BETWEEN 1 AND 20971520)
 );
