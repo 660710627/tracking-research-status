@@ -1,8 +1,8 @@
 import './App.css'
-import { ResearchListPage } from './pages/ResearchListPage'
+import { ResearchDashboardPage } from './pages/ResearchDashboardPage'
 
 function App() {
-  return <ResearchListPage />
+  return <ResearchDashboardPage />
 }
 
 export default App
