@@ -1,9 +1,16 @@
-@import "tailwindcss";
+:root {
+  font-family: 'Sarabun', sans-serif;
+  color: #173c36;
+  background: #ffffff;
+  line-height: 1.6;
+}
 
-:root { font-family: 'Sarabun', 'Leelawadee UI', Tahoma, sans-serif; color: #172033; background: #f3f7ff; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-html, body { min-width: 1280px; min-height: 100vh; margin: 0; background: #f3f7ff; }
-button, input, textarea, select { font: inherit; }
-button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid #60a5fa; outline-offset: 3px; }
-.control { height: 44px; border: 1px solid #e2e8f0; border-radius: .5rem; padding: 0 .75rem; font-size: .875rem; font-weight: 500; outline: none; transition: border-color .15s, box-shadow .15s; }
-.control:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px #dbeafe; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 48rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+}
