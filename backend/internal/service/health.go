@@ -2,14 +2,13 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 )
 
-var ErrServiceUnavailable = errors.New("service unavailable")
+const CodeServiceUnavailable = "SERVICE_UNAVAILABLE"
 
 type HealthRepository interface {
-	Check(context.Context) error
+	Ping(context.Context) error
 }
 
 type HealthService struct {
@@ -20,9 +19,26 @@ func NewHealthService(repository HealthRepository) *HealthService {
 	return &HealthService{repository: repository}
 }
 
-func (service *HealthService) Check(ctx context.Context) error {
-	if err := service.repository.Check(ctx); err != nil {
-		return fmt.Errorf("%w: %v", ErrServiceUnavailable, err)
+func (s *HealthService) CheckHealth(ctx context.Context) error {
+	if err := s.repository.Ping(ctx); err != nil {
+		return &HealthError{code: CodeServiceUnavailable, cause: err}
 	}
 	return nil
+}
+
+type HealthError struct {
+	code  string
+	cause error
+}
+
+func (e *HealthError) Error() string {
+	return fmt.Sprintf("health check failed: %v", e.cause)
+}
+
+func (e *HealthError) Unwrap() error {
+	return e.cause
+}
+
+func (e *HealthError) ErrorCode() string {
+	return e.code
 }

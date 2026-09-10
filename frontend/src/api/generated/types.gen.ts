@@ -11,21 +11,110 @@ export type HealthResponse = {
 export type Research = {
     id: ResearchId;
     title: ResearchTitle;
-    description: ResearchDescription;
     continuationOfId: NullableResearchId;
+    isSubsidized: boolean;
+    projectMembers: Array<ResearchMember>;
+    fundingType: FundingType;
+    fundingSourceName: ResearchText;
+    contractNumber: ContractNumber;
+    contractFile?: ContractFileMetadata;
+    projectType: ProjectType;
+    researchKind: ResearchKind;
+    responsibleProjectUnit: ResearchText;
+    responsibleBudgetUnit: ResearchText;
+    startDate: BuddhistDate;
+    /**
+     * Must be at least one calendar year after startDate. Use the same
+     * day and month in the following Buddhist year; when a 29 February
+     * anniversary does not exist, 1 March is the minimum valid end date.
+     *
+     */
+    endDate: BuddhistDate;
+    budgetAmount: BudgetAmount;
+    thaiAbstract: ResearchText;
+    englishAbstract: ResearchText;
+    objectives: ResearchText;
+    keywords: ResearchText;
     status: ResearchStatus;
     process: ResearchProcess;
 };
 
 export type CreateResearchRequest = {
     title: ResearchTitle;
-    description: ResearchDescription;
     continuationOfId: NullableResearchId;
+    isSubsidized: boolean;
+    /**
+     * Exactly one form part containing a JSON array. The array must contain
+     * exactly one LEAD and exactly one CO_RESEARCHER, representing two
+     * distinct people. Reject duplicate emails within the project and
+     * require contributionPercent values to sum to exactly 100.
+     * For duplicate detection within a project, trim leading and trailing
+     * whitespace from emails and compare case-insensitively.
+     *
+     */
+    projectMembers: [
+        ResearchMember,
+        ResearchMember
+    ];
+    fundingType: FundingType;
+    fundingSourceName: ResearchText;
+    contractNumber: ContractNumber;
+    contractFile: ContractFile;
+    projectType: ProjectType;
+    researchKind: ResearchKind;
+    responsibleProjectUnit: ResearchText;
+    responsibleBudgetUnit: ResearchText;
+    startDate: BuddhistDate;
+    /**
+     * Must be at least one calendar year after startDate. Use the same
+     * day and month in the following Buddhist year; when a 29 February
+     * anniversary does not exist, 1 March is the minimum valid end date.
+     *
+     */
+    endDate: BuddhistDate;
+    budgetAmount: BudgetAmount;
+    thaiAbstract: ResearchText;
+    englishAbstract: ResearchText;
+    objectives: ResearchText;
+    keywords: ResearchText;
 };
 
 export type UpdateResearchRequest = {
     title: ResearchTitle;
-    description: ResearchDescription;
+    isSubsidized: boolean;
+    /**
+     * Exactly one form part containing a JSON array. The array must contain
+     * exactly one LEAD and exactly one CO_RESEARCHER, representing two
+     * distinct people. Reject duplicate emails within the project and
+     * require contributionPercent values to sum to exactly 100.
+     * For duplicate detection within a project, trim leading and trailing
+     * whitespace from emails and compare case-insensitively.
+     *
+     */
+    projectMembers: [
+        ResearchMember,
+        ResearchMember
+    ];
+    fundingType: FundingType;
+    fundingSourceName: ResearchText;
+    contractNumber: ContractNumber;
+    contractFile?: ContractFile;
+    projectType: ProjectType;
+    responsibleProjectUnit: ResearchText;
+    responsibleBudgetUnit: ResearchText;
+    startDate: BuddhistDate;
+    /**
+     * Must be at least one calendar year after startDate. Use the same
+     * day and month in the following Buddhist year; when a 29 February
+     * anniversary does not exist, 1 March is the minimum valid end date.
+     *
+     */
+    endDate: BuddhistDate;
+    budgetAmount: BudgetAmount;
+    thaiAbstract: ResearchText;
+    englishAbstract: ResearchText;
+    objectives: ResearchText;
+    keywords: ResearchText;
 };
 
 export type UpdateStatusRequest = {
@@ -46,7 +135,8 @@ export type ResearchId = number;
 export type NullableResearchId = number | null;
 
 /**
- * Unicode whitespace is trimmed before validation and storage. Newline,
+ * Length is measured in Unicode code points after trimming Unicode
+ * whitespace and must be 1–1,000. Newline,
  * tab, NUL, other control characters, and `/` are forbidden. Duplicate
  * comparison is case-sensitive after trimming; continuation rules decide
  * whether a duplicate is permitted.
@@ -55,22 +145,96 @@ export type NullableResearchId = number | null;
 export type ResearchTitle = string;
 
 /**
- * Unicode whitespace is trimmed before validation and storage. Newline and
- * tab are allowed; NUL and other control characters are forbidden.
+ * Length is measured in Unicode code points after trimming Unicode
+ * whitespace and must be 1–1,000. NUL and control characters other than
+ * newline and tab are forbidden.
  *
  */
-export type ResearchDescription = string;
+export type ResearchText = string;
 
-export type ResearchStatus = 'กำลังดำเนินการ' | 'กำลังดำเนินการ (ขยายเวลาครั้งที่ 1)' | 'กำลังดำเนินการ (ขยายเวลาครั้งที่ 2)' | 'กำลังดำเนินการ (ขยายเวลามากกว่า 2 ครั้ง)' | 'โครงการเสร็จสิ้น' | 'ยุติโครงการ';
+/**
+ * Length is measured in Unicode code points after trimming Unicode
+ * whitespace and must be 1–1,000. The value must be globally unique after
+ * trimming and case-insensitive Unicode case folding. NUL and control
+ * characters other than newline and tab are forbidden.
+ *
+ */
+export type ContractNumber = string;
+
+export type ResearchMember = {
+    fullName: ResearchText;
+    /**
+     * Trim Unicode whitespace before validation and storage. Length is
+     * measured in Unicode code points and must be 1–254. Duplicate email
+     * comparison within a project is case-insensitive after trimming.
+     *
+     */
+    email: string;
+    affiliation: ResearchText;
+    contributionPercent: number;
+    role: 'LEAD' | 'CO_RESEARCHER';
+};
+
+export type FundingType = 'INTERNAL' | 'EXTERNAL';
+
+export type ProjectType = 'RESEARCH' | 'ACADEMIC_SERVICE';
+
+export type ResearchKind = 'BUDGET' | 'CONTINUATION';
+
+/**
+ * A real calendar date in DD/MM/YYYY Buddhist Era format for requests and
+ * responses. The pattern alone does not validate month lengths or leap years.
+ *
+ */
+export type BuddhistDate = string;
+
+/**
+ * Positive Thai baht amount with at most two decimal places.
+ */
+export type BudgetAmount = number;
+
+/**
+ * Non-empty PDF contract bytes, maximum 20 MiB (20,971,520 bytes).
+ * Parse the entire PDF, require at least one page, and reject malformed,
+ * encrypted, or password-protected files; do not rely only on filename,
+ * magic bytes, or MIME header. No base64 encoding.
+ * This is a file-size limit, not an aggregate multipart request-size limit.
+ *
+ */
+export type ContractFile = Blob | File;
+
+export type ContractFileMetadata = {
+    filename: ResearchText;
+    contentType: 'application/pdf';
+    sizeBytes: number;
+};
+
+export type ResearchStatus = 'กำลังดำเนินการ' | 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)' | 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)' | 'กำลังดำเนินการ(ขยายเวลามากกว่า 2 ครั้ง)' | 'โครงการเสร็จสิ้น' | 'ยุติโครงการ';
 
 export type ResearchProcess = 'สัญญาโครงการ' | 'บันทึกข้อตกลง' | 'เปิดบัญชีธนาคาร' | 'การเบิกจ่ายเงิน' | 'การจัดสรรค่าธรรมเนียม' | 'การติดตามส่งรายงาน' | 'รายงานสรุปการใช้เงิน' | 'การปิดบัญชีธนาคาร';
 
-export type ErrorCode = 'CONTINUATION_NOT_FOUND' | 'INTERNAL_ERROR' | 'INVALID_JSON' | 'INVALID_PROCESS_TRANSITION' | 'INVALID_REQUEST_BODY' | 'INVALID_STATUS_TRANSITION' | 'METHOD_NOT_ALLOWED' | 'PAYLOAD_TOO_LARGE' | 'PROJECT_ALREADY_ENDED' | 'RESEARCH_HAS_CONTINUATIONS' | 'RESEARCH_NOT_FOUND' | 'ROUTE_NOT_FOUND' | 'SERVICE_UNAVAILABLE' | 'TITLE_ALREADY_EXISTS' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_ERROR';
+export type ErrorCode = 'CONTINUATION_NOT_FOUND' | 'CONTRACT_NUMBER_ALREADY_EXISTS' | 'INTERNAL_ERROR' | 'INVALID_JSON' | 'INVALID_PROCESS_TRANSITION' | 'INVALID_REQUEST_BODY' | 'INVALID_STATUS_TRANSITION' | 'METHOD_NOT_ALLOWED' | 'PAYLOAD_TOO_LARGE' | 'PROJECT_ALREADY_ENDED' | 'RESEARCH_HAS_CONTINUATIONS' | 'RESEARCH_NOT_FOUND' | 'ROUTE_NOT_FOUND' | 'SERVICE_UNAVAILABLE' | 'TITLE_ALREADY_EXISTS' | 'UNSUPPORTED_MEDIA_TYPE' | 'VALIDATION_ERROR';
 
 export type ErrorResponse = {
     error: {
         code: ErrorCode;
         message: string;
+    };
+};
+
+export type FieldError = {
+    /**
+     * Field path such as projectMembers[0].email or contractFile.
+     */
+    field: string;
+    message: string;
+};
+
+export type ValidationErrorResponse = {
+    error: {
+        code: 'VALIDATION_ERROR';
+        message: string;
+        fieldErrors: Array<FieldError>;
     };
 };
 
@@ -122,10 +286,13 @@ export type ListResearchesErrors = {
     400: ErrorResponse;
     /**
      * The path ID, request object, fields, duplicate keys, unknown fields, or
-     * query parameters violate this contract.
+     * query parameters violate this contract. Malformed multipart bodies,
+     * missing boundaries, missing/repeated/unknown parts, malformed member
+     * JSON, and invalid, empty, malformed, encrypted, password-protected, or
+     * zero-page PDFs also return this error. fieldErrors is always non-empty.
      *
      */
-    422: ErrorResponse;
+    422: ValidationErrorResponse;
     /**
      * An unexpected database or internal error occurred.
      */
@@ -152,33 +319,33 @@ export type CreateResearchData = {
 
 export type CreateResearchErrors = {
     /**
-     * The body is empty or whitespace-only, malformed, has trailing data, or
-     * contains more than one JSON value.
-     *
-     */
-    400: ErrorResponse;
-    /**
      * continuationOfId does not reference an existing research.
      */
     404: ErrorResponse;
     /**
-     * A root research would duplicate an existing case-sensitive trimmed title.
+     * The title or normalized contract number conflicts with existing data.
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB (20,971,520
+     * bytes) for a contract PDF or 21 MiB (22,020,096 bytes) for the complete
+     * multipart body in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
      * The path ID, request object, fields, duplicate keys, unknown fields, or
-     * query parameters violate this contract.
+     * query parameters violate this contract. Malformed multipart bodies,
+     * missing boundaries, missing/repeated/unknown parts, malformed member
+     * JSON, and invalid, empty, malformed, encrypted, password-protected, or
+     * zero-page PDFs also return this error. fieldErrors is always non-empty.
      *
      */
-    422: ErrorResponse;
+    422: ValidationErrorResponse;
     /**
      * An unexpected database or internal error occurred.
      */
@@ -223,10 +390,13 @@ export type DeleteResearchErrors = {
     409: ErrorResponse;
     /**
      * The path ID, request object, fields, duplicate keys, unknown fields, or
-     * query parameters violate this contract.
+     * query parameters violate this contract. Malformed multipart bodies,
+     * missing boundaries, missing/repeated/unknown parts, malformed member
+     * JSON, and invalid, empty, malformed, encrypted, password-protected, or
+     * zero-page PDFs also return this error. fieldErrors is always non-empty.
      *
      */
-    422: ErrorResponse;
+    422: ValidationErrorResponse;
     /**
      * An unexpected database or internal error occurred.
      */
@@ -258,33 +428,33 @@ export type UpdateResearchData = {
 
 export type UpdateResearchErrors = {
     /**
-     * The body is empty or whitespace-only, malformed, has trailing data, or
-     * contains more than one JSON value.
-     *
-     */
-    400: ErrorResponse;
-    /**
      * No research has the supplied positive ID.
      */
     404: ErrorResponse;
     /**
-     * A root research would duplicate an existing case-sensitive trimmed title.
+     * The title or normalized contract number conflicts with existing data.
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB (20,971,520
+     * bytes) for a contract PDF or 21 MiB (22,020,096 bytes) for the complete
+     * multipart body in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
      * The path ID, request object, fields, duplicate keys, unknown fields, or
-     * query parameters violate this contract.
+     * query parameters violate this contract. Malformed multipart bodies,
+     * missing boundaries, missing/repeated/unknown parts, malformed member
+     * JSON, and invalid, empty, malformed, encrypted, password-protected, or
+     * zero-page PDFs also return this error. fieldErrors is always non-empty.
      *
      */
-    422: ErrorResponse;
+    422: ValidationErrorResponse;
     /**
      * An unexpected database or internal error occurred.
      */
@@ -332,19 +502,25 @@ export type UpdateResearchStatusErrors = {
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB (20,971,520
+     * bytes) for a contract PDF or 21 MiB (22,020,096 bytes) for the complete
+     * multipart body in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
      * The path ID, request object, fields, duplicate keys, unknown fields, or
-     * query parameters violate this contract.
+     * query parameters violate this contract. Malformed multipart bodies,
+     * missing boundaries, missing/repeated/unknown parts, malformed member
+     * JSON, and invalid, empty, malformed, encrypted, password-protected, or
+     * zero-page PDFs also return this error. fieldErrors is always non-empty.
      *
      */
-    422: ErrorResponse;
+    422: ValidationErrorResponse;
     /**
      * An unexpected database or internal error occurred.
      */
@@ -392,19 +568,25 @@ export type UpdateResearchProcessErrors = {
      */
     409: ErrorResponse;
     /**
-     * The raw request body exceeds 64 KiB (65,536 bytes).
+     * The request payload exceeds the operation limit: 20 MiB (20,971,520
+     * bytes) for a contract PDF or 21 MiB (22,020,096 bytes) for the complete
+     * multipart body in POST/PUT, or 64 KiB for a PATCH JSON body.
+     *
      */
     413: ErrorResponse;
     /**
-     * Content-Type is missing or is not application/json.
+     * Content-Type is missing or does not match the operation's required media type.
      */
     415: ErrorResponse;
     /**
      * The path ID, request object, fields, duplicate keys, unknown fields, or
-     * query parameters violate this contract.
+     * query parameters violate this contract. Malformed multipart bodies,
+     * missing boundaries, missing/repeated/unknown parts, malformed member
+     * JSON, and invalid, empty, malformed, encrypted, password-protected, or
+     * zero-page PDFs also return this error. fieldErrors is always non-empty.
      *
      */
-    422: ErrorResponse;
+    422: ValidationErrorResponse;
     /**
      * An unexpected database or internal error occurred.
      */

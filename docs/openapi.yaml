@@ -1,24 +1,28 @@
 openapi: 3.1.0
 info:
   title: Tracking Research Status API
-  version: 1.0.0
+  version: 2.0.0
   description: |
     API contract for the Tracking Research Status MVP.
 
-    The API has no authentication or role-specific views. Every caller sees the
-    same research list. UI pages for viewing or changing status and process are
-    outside MVP scope, but the status and process API operations are included.
+    This MVP operates in the administrator role only. Authentication and
+    multi-role permission enforcement are not implemented in this contract.
+    Research IDs remain internal database/API references, including path IDs
+    and continuationOfId. The UI does not display or search by ID; it uses
+    contractNumber instead, while retaining title search as defined in SPEC.md.
 
     Every error response uses `{"error":{"code":"...","message":"..."}}` and
     does not expose stack traces or database details. Unknown routes return
     `404 ROUTE_NOT_FOUND`; unsupported methods on known routes return
     `405 METHOD_NOT_ALLOWED`.
 
-    POST, PUT, and PATCH accept one JSON object only. Content-Type must be
-    application/json, may include parameters such as charset=utf-8, and is
-    matched case-insensitively. Duplicate keys, unknown fields, and non-object
-    top-level JSON values are rejected. The raw request body limit is 64 KiB
-    (65,536 bytes).
+    POST and PUT accept multipart/form-data with one PDF contract file; PATCH
+    accepts one JSON object. Media types are matched case-insensitively. JSON
+    duplicate keys, unknown fields, and non-object top-level values are
+    rejected. The PDF limit is 20 MiB and the PATCH JSON limit is 64 KiB.
+    Responses remain JSON and contain project data and PDF metadata, not file bytes.
+    The UI prevents repeated submission and does not retry mutations automatically.
+    General concurrent updates use last-successful-write-wins without entity versions.
 security: []
 servers:
   - url: /
@@ -82,7 +86,7 @@ paths:
       operationId: createResearch
       summary: Create a research
       description: |
-        Creates one research atomically. The server generates a positive,
+        Creates one research atomically from multipart form data. The server generates a positive,
         immutable, unique ID that is never reused after deletion. Status starts
         at "กำลังดำเนินการ" and process starts at "สัญญาโครงการ".
 
@@ -90,14 +94,30 @@ paths:
         sends the positive ID of an existing research. The referenced research
         may already be completed or terminated. A root title cannot duplicate
         any existing trimmed title. Continuations may use duplicate titles.
-        Title comparison is case-sensitive after Unicode trimming.
+        Title comparison is case-sensitive after Unicode trimming. Every required
+        form part occurs exactly once; unknown or duplicate parts, including a
+        projectMembers part that is not one JSON array, are validation errors.
+        Multipart scalar parts use UTF-8 text: booleans are true/false, numeric
+        values are decimal, and a null continuationOfId is the literal text null.
+        BUDGET requires null continuationOfId; CONTINUATION requires a positive ID.
+        contractNumber is unique after Unicode trimming and case-insensitive
+        Unicode case folding. Each repeated POST is a new create attempt and is
+        checked against the title and contract-number uniqueness rules; clients
+        do not retry this mutation automatically.
+        Selecting a file in the browser alone does not upload or persist it.
+        Failed persistence must clean temporary files and must not expose partial data.
       requestBody:
         required: true
-        x-max-body-bytes: 65536
+        x-max-body-bytes: 22020096
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/CreateResearchRequest"
+            encoding:
+              projectMembers:
+                contentType: application/json
+              contractFile:
+                contentType: application/pdf
       responses:
         "201":
           description: The research was created and persisted successfully.
@@ -105,12 +125,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
-        "400":
-          $ref: "#/components/responses/InvalidJson"
         "404":
           $ref: "#/components/responses/ContinuationNotFound"
         "409":
-          $ref: "#/components/responses/TitleAlreadyExists"
+          $ref: "#/components/responses/ResearchConflict"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
@@ -130,18 +148,31 @@ paths:
       operationId: updateResearch
       summary: Replace research details
       description: |
-        Atomically replaces title and description only. ID, continuationOfId,
-        status, and process remain unchanged. A root may retain its current title
-        while changing description even when a continuation has the same title.
+        Atomically replaces all editable data and optionally the contract PDF. ID,
+        continuationOfId, researchKind, status, and process remain unchanged. A root may retain its current title
+        while changing other data even when a continuation has the same title.
         If a root changes its title, the new trimmed title cannot duplicate any
         existing research title. A continuation may change to a duplicate title.
+        Every required form part occurs exactly once; unknown or duplicate parts,
+        including a projectMembers part that is not one JSON array, are validation
+        errors. Scalar encoding follows the create operation. contractFile is
+        optional: omit it to retain the existing file and metadata; include it
+        to replace the old PDF only after the complete update succeeds. Failure
+        must preserve the previous project and PDF and clean temporary files.
+        Concurrent replacements use last-successful-write-wins; this operation
+        does not use a version field or If-Match precondition.
       requestBody:
         required: true
-        x-max-body-bytes: 65536
+        x-max-body-bytes: 22020096
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/UpdateResearchRequest"
+            encoding:
+              projectMembers:
+                contentType: application/json
+              contractFile:
+                contentType: application/pdf
       responses:
         "200":
           description: The research details were replaced successfully.
@@ -149,12 +180,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
-        "400":
-          $ref: "#/components/responses/InvalidJson"
         "404":
           $ref: "#/components/responses/ResearchNotFound"
         "409":
-          $ref: "#/components/responses/TitleAlreadyExists"
+          $ref: "#/components/responses/ResearchConflict"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
@@ -173,6 +202,9 @@ paths:
         Deletes the research identified by ID. The deleted ID is never reused.
         A research referenced through continuationOfId cannot be deleted. This
         operation accepts neither a non-empty request body nor query parameters.
+        Success deletes the research, members, contract metadata, and PDF. If
+        either persistent data or file deletion fails, the operation fails and
+        the original data and PDF remain usable; partial success is forbidden.
       responses:
         "204":
           description: The research was deleted successfully; the response has no body.
@@ -248,11 +280,12 @@ paths:
         Updates the single current process atomically from the latest persisted
         value. Process may move only to the next value; it cannot skip, reverse,
         or advance beyond "การปิดบัญชีธนาคาร". Sending the current process again
-        is idempotent and returns 200.
+        is idempotent and returns 200 only while the project has not ended.
 
         Advancing process does not change status. Completing the final process
         does not automatically complete the project. Process cannot be changed
-        after status becomes "โครงการเสร็จสิ้น" or "ยุติโครงการ".
+        after status becomes "โครงการเสร็จสิ้น" or "ยุติโครงการ", including
+        requests for the current process; terminal lock takes precedence.
       requestBody:
         required: true
         x-max-body-bytes: 65536
@@ -309,8 +342,23 @@ components:
       required:
         - id
         - title
-        - description
         - continuationOfId
+        - isSubsidized
+        - projectMembers
+        - fundingType
+        - fundingSourceName
+        - contractNumber
+        - projectType
+        - researchKind
+        - responsibleProjectUnit
+        - responsibleBudgetUnit
+        - startDate
+        - endDate
+        - budgetAmount
+        - thaiAbstract
+        - englishAbstract
+        - objectives
+        - keywords
         - status
         - process
       properties:
@@ -318,10 +366,48 @@ components:
           $ref: "#/components/schemas/ResearchId"
         title:
           $ref: "#/components/schemas/ResearchTitle"
-        description:
-          $ref: "#/components/schemas/ResearchDescription"
         continuationOfId:
           $ref: "#/components/schemas/NullableResearchId"
+        isSubsidized:
+          type: boolean
+        projectMembers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResearchMember"
+        fundingType:
+          $ref: "#/components/schemas/FundingType"
+        fundingSourceName:
+          $ref: "#/components/schemas/ResearchText"
+        contractNumber:
+          $ref: "#/components/schemas/ContractNumber"
+        contractFile:
+          $ref: "#/components/schemas/ContractFileMetadata"
+        projectType:
+          $ref: "#/components/schemas/ProjectType"
+        researchKind:
+          $ref: "#/components/schemas/ResearchKind"
+        responsibleProjectUnit:
+          $ref: "#/components/schemas/ResearchText"
+        responsibleBudgetUnit:
+          $ref: "#/components/schemas/ResearchText"
+        startDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        endDate:
+          $ref: "#/components/schemas/BuddhistDate"
+          description: |
+            Must be at least one calendar year after startDate. Use the same
+            day and month in the following Buddhist year; when a 29 February
+            anniversary does not exist, 1 March is the minimum valid end date.
+        budgetAmount:
+          $ref: "#/components/schemas/BudgetAmount"
+        thaiAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        englishAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        objectives:
+          $ref: "#/components/schemas/ResearchText"
+        keywords:
+          $ref: "#/components/schemas/ResearchText"
         status:
           $ref: "#/components/schemas/ResearchStatus"
         process:
@@ -332,27 +418,149 @@ components:
       additionalProperties: false
       required:
         - title
-        - description
         - continuationOfId
+        - isSubsidized
+        - projectMembers
+        - fundingType
+        - fundingSourceName
+        - contractNumber
+        - contractFile
+        - projectType
+        - researchKind
+        - responsibleProjectUnit
+        - responsibleBudgetUnit
+        - startDate
+        - endDate
+        - budgetAmount
+        - thaiAbstract
+        - englishAbstract
+        - objectives
+        - keywords
       properties:
         title:
           $ref: "#/components/schemas/ResearchTitle"
-        description:
-          $ref: "#/components/schemas/ResearchDescription"
         continuationOfId:
           $ref: "#/components/schemas/NullableResearchId"
+        isSubsidized:
+          type: boolean
+        projectMembers:
+          type: array
+          minItems: 2
+          maxItems: 2
+          description: |
+            Exactly one form part containing a JSON array. The array must contain
+            exactly one LEAD and exactly one CO_RESEARCHER, representing two
+            distinct people. Reject duplicate emails within the project and
+            require contributionPercent values to sum to exactly 100.
+            For duplicate detection within a project, trim leading and trailing
+            whitespace from emails and compare case-insensitively.
+          items:
+            $ref: "#/components/schemas/ResearchMember"
+        fundingType:
+          $ref: "#/components/schemas/FundingType"
+        fundingSourceName:
+          $ref: "#/components/schemas/ResearchText"
+        contractNumber:
+          $ref: "#/components/schemas/ContractNumber"
+        contractFile:
+          $ref: "#/components/schemas/ContractFile"
+        projectType:
+          $ref: "#/components/schemas/ProjectType"
+        researchKind:
+          $ref: "#/components/schemas/ResearchKind"
+        responsibleProjectUnit:
+          $ref: "#/components/schemas/ResearchText"
+        responsibleBudgetUnit:
+          $ref: "#/components/schemas/ResearchText"
+        startDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        endDate:
+          $ref: "#/components/schemas/BuddhistDate"
+          description: |
+            Must be at least one calendar year after startDate. Use the same
+            day and month in the following Buddhist year; when a 29 February
+            anniversary does not exist, 1 March is the minimum valid end date.
+        budgetAmount:
+          $ref: "#/components/schemas/BudgetAmount"
+        thaiAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        englishAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        objectives:
+          $ref: "#/components/schemas/ResearchText"
+        keywords:
+          $ref: "#/components/schemas/ResearchText"
 
     UpdateResearchRequest:
       type: object
       additionalProperties: false
       required:
         - title
-        - description
+        - isSubsidized
+        - projectMembers
+        - fundingType
+        - fundingSourceName
+        - contractNumber
+        - projectType
+        - responsibleProjectUnit
+        - responsibleBudgetUnit
+        - startDate
+        - endDate
+        - budgetAmount
+        - thaiAbstract
+        - englishAbstract
+        - objectives
+        - keywords
       properties:
         title:
           $ref: "#/components/schemas/ResearchTitle"
-        description:
-          $ref: "#/components/schemas/ResearchDescription"
+        isSubsidized:
+          type: boolean
+        projectMembers:
+          type: array
+          minItems: 2
+          maxItems: 2
+          description: |
+            Exactly one form part containing a JSON array. The array must contain
+            exactly one LEAD and exactly one CO_RESEARCHER, representing two
+            distinct people. Reject duplicate emails within the project and
+            require contributionPercent values to sum to exactly 100.
+            For duplicate detection within a project, trim leading and trailing
+            whitespace from emails and compare case-insensitively.
+          items:
+            $ref: "#/components/schemas/ResearchMember"
+        fundingType:
+          $ref: "#/components/schemas/FundingType"
+        fundingSourceName:
+          $ref: "#/components/schemas/ResearchText"
+        contractNumber:
+          $ref: "#/components/schemas/ContractNumber"
+        contractFile:
+          $ref: "#/components/schemas/ContractFile"
+        projectType:
+          $ref: "#/components/schemas/ProjectType"
+        responsibleProjectUnit:
+          $ref: "#/components/schemas/ResearchText"
+        responsibleBudgetUnit:
+          $ref: "#/components/schemas/ResearchText"
+        startDate:
+          $ref: "#/components/schemas/BuddhistDate"
+        endDate:
+          $ref: "#/components/schemas/BuddhistDate"
+          description: |
+            Must be at least one calendar year after startDate. Use the same
+            day and month in the following Buddhist year; when a 29 February
+            anniversary does not exist, 1 March is the minimum valid end date.
+        budgetAmount:
+          $ref: "#/components/schemas/BudgetAmount"
+        thaiAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        englishAbstract:
+          $ref: "#/components/schemas/ResearchText"
+        objectives:
+          $ref: "#/components/schemas/ResearchText"
+        keywords:
+          $ref: "#/components/schemas/ResearchText"
 
     UpdateStatusRequest:
       type: object
@@ -390,30 +598,127 @@ components:
     ResearchTitle:
       type: string
       minLength: 1
-      maxLength: 200
+      maxLength: 1000
       pattern: '^[^/\x00-\x1F\x7F]+$'
       description: |
-        Unicode whitespace is trimmed before validation and storage. Newline,
+        Length is measured in Unicode code points after trimming Unicode
+        whitespace and must be 1–1,000. Newline,
         tab, NUL, other control characters, and `/` are forbidden. Duplicate
         comparison is case-sensitive after trimming; continuation rules decide
         whether a duplicate is permitted.
 
-    ResearchDescription:
+    ResearchText:
       type: string
       minLength: 1
-      maxLength: 5000
+      maxLength: 1000
       pattern: '^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+$'
       description: |
-        Unicode whitespace is trimmed before validation and storage. Newline and
-        tab are allowed; NUL and other control characters are forbidden.
+        Length is measured in Unicode code points after trimming Unicode
+        whitespace and must be 1–1,000. NUL and control characters other than
+        newline and tab are forbidden.
+
+    ContractNumber:
+      type: string
+      minLength: 1
+      maxLength: 1000
+      pattern: '^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+$'
+      description: |
+        Length is measured in Unicode code points after trimming Unicode
+        whitespace and must be 1–1,000. The value must be globally unique after
+        trimming and case-insensitive Unicode case folding. NUL and control
+        characters other than newline and tab are forbidden.
+
+    ResearchMember:
+      type: object
+      additionalProperties: false
+      required:
+        - fullName
+        - email
+        - affiliation
+        - contributionPercent
+        - role
+      properties:
+        fullName:
+          $ref: "#/components/schemas/ResearchText"
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+          description: |
+            Trim Unicode whitespace before validation and storage. Length is
+            measured in Unicode code points and must be 1–254. Duplicate email
+            comparison within a project is case-insensitive after trimming.
+        affiliation:
+          $ref: "#/components/schemas/ResearchText"
+        contributionPercent:
+          type: number
+          minimum: 0.01
+          maximum: 100
+          multipleOf: 0.01
+        role:
+          type: string
+          enum: [LEAD, CO_RESEARCHER]
+
+    FundingType:
+      type: string
+      enum: [INTERNAL, EXTERNAL]
+
+    ProjectType:
+      type: string
+      enum: [RESEARCH, ACADEMIC_SERVICE]
+
+    ResearchKind:
+      type: string
+      enum: [BUDGET, CONTINUATION]
+
+    BuddhistDate:
+      type: string
+      pattern: '^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}$'
+      description: |
+        A real calendar date in DD/MM/YYYY Buddhist Era format for requests and
+        responses. The pattern alone does not validate month lengths or leap years.
+
+    BudgetAmount:
+      type: number
+      minimum: 0.01
+      multipleOf: 0.01
+      description: Positive Thai baht amount with at most two decimal places.
+
+    ContractFile:
+      type: string
+      format: binary
+      description: |
+        Non-empty PDF contract bytes, maximum 20 MiB (20,971,520 bytes).
+        Parse the entire PDF, require at least one page, and reject malformed,
+        encrypted, or password-protected files; do not rely only on filename,
+        magic bytes, or MIME header. No base64 encoding.
+        This is a file-size limit, not an aggregate multipart request-size limit.
+      x-allowed-media-types: [application/pdf]
+      x-max-file-bytes: 20971520
+
+    ContractFileMetadata:
+      type: object
+      additionalProperties: false
+      required: [filename, contentType, sizeBytes]
+      properties:
+        filename:
+          $ref: "#/components/schemas/ResearchText"
+        contentType:
+          type: string
+          const: application/pdf
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 20971520
 
     ResearchStatus:
       type: string
       enum:
         - กำลังดำเนินการ
-        - กำลังดำเนินการ (ขยายเวลาครั้งที่ 1)
-        - กำลังดำเนินการ (ขยายเวลาครั้งที่ 2)
-        - กำลังดำเนินการ (ขยายเวลามากกว่า 2 ครั้ง)
+        - กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)
+        - กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)
+        - กำลังดำเนินการ(ขยายเวลามากกว่า 2 ครั้ง)
         - โครงการเสร็จสิ้น
         - ยุติโครงการ
 
@@ -433,6 +738,7 @@ components:
       type: string
       enum:
         - CONTINUATION_NOT_FOUND
+        - CONTRACT_NUMBER_ALREADY_EXISTS
         - INTERNAL_ERROR
         - INVALID_JSON
         - INVALID_PROCESS_TRANSITION
@@ -467,6 +773,41 @@ components:
             message:
               type: string
               minLength: 1
+
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          minLength: 1
+          description: Field path such as projectMembers[0].email or contractFile.
+        message:
+          type: string
+          minLength: 1
+
+    ValidationErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, fieldErrors]
+          properties:
+            code:
+              type: string
+              const: VALIDATION_ERROR
+            message:
+              type: string
+              minLength: 1
+            fieldErrors:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/FieldError"
 
   responses:
     ContinuationNotFound:
@@ -516,7 +857,10 @@ components:
               message: This operation does not accept a request body.
 
     PayloadTooLarge:
-      description: The raw request body exceeds 64 KiB (65,536 bytes).
+      description: |
+        The request payload exceeds the operation limit: 20 MiB (20,971,520
+        bytes) for a contract PDF or 21 MiB (22,020,096 bytes) for the complete
+        multipart body in POST/PUT, or 64 KiB for a PATCH JSON body.
       content:
         application/json:
           schema:
@@ -524,7 +868,7 @@ components:
           example:
             error:
               code: PAYLOAD_TOO_LARGE
-              message: Request body exceeds 64 KiB.
+              message: Request payload exceeds the allowed size.
 
     ProcessConflict:
       description: |
@@ -599,19 +943,26 @@ components:
                   code: PROJECT_ALREADY_ENDED
                   message: The project has already ended.
 
-    TitleAlreadyExists:
-      description: A root research would duplicate an existing case-sensitive trimmed title.
+    ResearchConflict:
+      description: The title or normalized contract number conflicts with existing data.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
-          example:
-            error:
-              code: TITLE_ALREADY_EXISTS
-              message: A research with this title already exists.
+          examples:
+            duplicateTitle:
+              value:
+                error:
+                  code: TITLE_ALREADY_EXISTS
+                  message: A research with this title already exists.
+            duplicateContractNumber:
+              value:
+                error:
+                  code: CONTRACT_NUMBER_ALREADY_EXISTS
+                  message: A research with this contract number already exists.
 
     UnsupportedMediaType:
-      description: Content-Type is missing or is not application/json.
+      description: Content-Type is missing or does not match the operation's required media type.
       content:
         application/json:
           schema:
@@ -619,17 +970,23 @@ components:
           example:
             error:
               code: UNSUPPORTED_MEDIA_TYPE
-              message: Content-Type must be application/json.
+              message: Content-Type is not supported for this operation.
 
     ValidationError:
       description: |
         The path ID, request object, fields, duplicate keys, unknown fields, or
-        query parameters violate this contract.
+        query parameters violate this contract. Malformed multipart bodies,
+        missing boundaries, missing/repeated/unknown parts, malformed member
+        JSON, and invalid, empty, malformed, encrypted, password-protected, or
+        zero-page PDFs also return this error. fieldErrors is always non-empty.
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: "#/components/schemas/ValidationErrorResponse"
           example:
             error:
               code: VALIDATION_ERROR
               message: Request validation failed.
+              fieldErrors:
+                - field: contractFile
+                  message: Contract file must be a complete, readable PDF.

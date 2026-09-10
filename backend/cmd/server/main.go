@@ -1,8 +1,11 @@
 package main
 
 import (
-	"context"
+	"errors"
 	"log"
+	"net/http"
+	"os"
+	"time"
 
 	"github.com/660710627/my-research/internal/db"
 	"github.com/660710627/my-research/internal/handler"
@@ -10,33 +13,38 @@ import (
 	"github.com/660710627/my-research/internal/service"
 )
 
+const defaultDatabasePath = "library.db"
+
 func main() {
-	database, err := db.Open("library.db")
+	databasePath := os.Getenv("RESEARCH_DB_PATH")
+	if databasePath == "" {
+		databasePath = defaultDatabasePath
+	}
+
+	database, err := db.Open(databasePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("initialize database: %v", err)
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
 			log.Printf("close database: %v", err)
 		}
 	}()
-	if err := db.Initialize(context.Background(), database); err != nil {
-		log.Fatal(err)
-	}
 
 	healthRepository := repo.NewHealthRepository(database)
 	healthService := service.NewHealthService(healthRepository)
-	researchRepository := repo.NewResearchRepository(database)
-	researchService := service.NewResearchService(researchRepository)
-	researchListService := service.NewResearchListService(researchRepository)
-	researchUpdateService := service.NewResearchUpdateService(researchRepository)
-	researchDeleteService := service.NewResearchDeleteService(researchRepository)
-	router := handler.NewRouter(handler.Dependencies{
-		Health: healthService, Researches: researchService, ResearchList: researchListService,
-		ResearchUpdate: researchUpdateService, ResearchDelete: researchDeleteService,
-	})
 
-	if err := router.Run(":8080"); err != nil {
-		log.Fatal(err)
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           handler.NewRouter(healthService),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	log.Printf("server listening on http://127.0.0.1:8080")
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("serve HTTP: %v", err)
 	}
 }

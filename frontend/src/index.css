@@ -1,58 +1,16 @@
 :root {
-  --font-sans: 'Sarabun', 'Leelawadee UI', Tahoma, sans-serif;
-
-  font-family: var(--font-sans);
-  color: #173f39;
-  background: #f5f4ee;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  min-width: 320px;
-  background: #f5f4ee;
+  font-family: 'Sarabun', sans-serif;
+  color: #173c36;
+  background: #ffffff;
+  line-height: 1.6;
 }
 
 body {
-  min-width: 320px;
-  min-height: 100vh;
   margin: 0;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  min-width: 44px;
-  min-height: 44px;
-}
-
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 3px solid #0d8a74;
-  outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+main {
+  max-width: 48rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
 }
