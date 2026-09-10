@@ -5,8 +5,17 @@
 - พัฒนาตาม SPEC: เพิ่ม/แสดง/ค้นหา/กรอง/แก้ไข/ลบงานวิจัย พร้อมบุคลากร แหล่งทุน PDF และหน้าปรับสถานะ/กระบวนการ รวมการนำทางและ UI states
 - ไม่ใช้ฟิลด์รายละเอียดแบบเก่า; ใช้ข้อมูลโครงการใหม่ตาม AC-01–AC-14 และ schema ใน OpenAPI
 - ใช้ SPEC กำหนดพฤติกรรม และ OpenAPI กำหนด HTTP contract; ปิดข้อขัดแย้งก่อน implementation ของส่วนที่เกี่ยวข้อง ไม่เพิ่ม endpoint เอง
-- เรื่องที่ต้องให้ human ตัดสินใจ: สิทธิ์สามบทบาทกับ authentication ที่อยู่นอก scope; AC-02 ห้ามแสดง ID แต่ส่วน Feature/AC-10 ให้แสดงรหัส; จำนวน/สัดส่วนบุคลากร; validation ข้อความและวันที่; ขนาด multipart; การเก็บ/เปลี่ยน/ลบ PDF และการจัดการคำขอซ้ำ/แก้ไขพร้อมกัน
-- แก้การอ้างเลข AC ใน SQL ให้ตรงหัวข้อปัจจุบันก่อนเขียน tests: validation คือ AC-04, สถานะคือ AC-11, กระบวนการคือ AC-12
+- ข้อสรุปจาก human: MVP ใช้งานในบทบาทผู้ดูแลระบบก่อน ไม่เพิ่ม authentication หรือระบบแยกสิทธิ์; ID ใช้อ้างอิงภายในฐานข้อมูล/API ไม่แสดงบน UI และค้นหาด้วยเลขสัญญาทุนแทน ID โดยคงการค้นหาชื่อตามเดิม
+- ข้อสรุปบุคลากร: หัวหน้า 1 คนและผู้ร่วม 1 คนเท่านั้น ห้ามบุคคลเดียวมีสองบทบาทในโครงการเดียวกัน ตรวจซ้ำด้วยอีเมล และสัดส่วนรวมต้องเท่ากับ 100% ทั้ง create/update; บังคับในกฎธุรกิจและ SQL ตาม AC-05
+- ตรวจบุคคลซ้ำภายในโครงการด้วยอีเมลหลังตัด whitespace หัวท้ายและเปรียบเทียบแบบไม่แยกตัวพิมพ์ใหญ่–เล็ก ทั้ง create/update
+- ข้อสรุปวันที่: วันสิ้นสุดต้องไม่น้อยกว่าวันครบรอบ 1 ปีปฏิทินของวันเริ่ม; กรณีเริ่ม 29 กุมภาพันธ์และปีถัดไปไม่มีวันดังกล่าว ให้ใช้ 1 มีนาคมเป็นวันขั้นต่ำ
+- ข้อสรุปข้อความ: ฟิลด์ข้อความทั่วไปทั้งหมดยาว 1–1,000 Unicode code points หลัง trim; อีเมลยาว 1–254 Unicode code points หลัง trim และต้องผ่านรูปแบบอีเมล
+- ข้อสรุปขนาดอัปโหลด: PDF ไม่เกิน 20 MiB (20,971,520 bytes) และ multipart ทั้งก้อนไม่เกิน 21 MiB (22,020,096 bytes); handler บังคับเพดานก่อน parse/persist
+- ข้อสรุปวงจรไฟล์: PUT ไม่บังคับ PDF ใหม่—ไม่ส่งให้คงไฟล์เดิม ส่งให้แทนที่เมื่อทุกขั้นสำเร็จและ failure ต้องคืนสภาพเดิม; DELETE ต้องลบทั้งข้อมูล/metadata/PDF และ failure ต้องคงของเดิม ห้ามรายงานสำเร็จแบบบางส่วน
+- ข้อสรุป mutation: UI ปิดปุ่มระหว่าง submit และไม่ retry mutation อัตโนมัติ; POST ซ้ำเป็นคำขอใหม่และผ่าน duplicate constraints ตามปกติ; PUT พร้อมกันใช้ last-successful-write-wins โดยไม่เพิ่ม version/If-Match
+- ข้อสรุปค้นหา: frontend ค้นหาแบบ Unicode-trimmed, case-insensitive substring เฉพาะชื่อ/เลขสัญญาทุน; เลขสัญญาทุน unique ด้วย normalized key ในฐานข้อมูล
+- ข้อสรุป validation/PDF/UI: VALIDATION_ERROR มี fieldErrors; PDF ต้อง parse สมบูรณ์ มีอย่างน้อย 1 หน้าและไม่ encrypted พร้อม startup reconciliation; E2E ใช้ viewport 375×667 และ 1280×720, WCAG 2.2 AA, keyboard/focus และ reduced motion ตาม AC-14
+- การอ้างเลข AC ใน SQL ปรับให้ตรงแล้ว: validation คือ AC-04, สถานะคือ AC-11 และกระบวนการคือ AC-12
 - ไม่รวม deployment, notification และ Excel export ตาม SPEC; ยังไม่ออกแบบ authentication เพิ่มเพื่อแก้ข้อขัดแย้งเอง
 
 ## Backend
@@ -20,7 +29,7 @@
 
 ## PDF และ API
 
-- POST/PUT ใช้ multipart/form-data: ข้อมูลโครงการ, projectMembers เป็น JSON array ใน part เดียว และ PDF เป็น binary; PATCH สถานะ/กระบวนการใช้ JSON
+- POST/PUT ใช้ multipart/form-data: ข้อมูลโครงการ, projectMembers เป็น JSON array ใน part เดียว และ PDF เป็น binary โดย POST บังคับไฟล์ ส่วน PUT ให้ละไฟล์เพื่อคงฉบับเดิมได้; PATCH สถานะ/กระบวนการใช้ JSON
 - คงเส้นทาง health, list, create, update, delete, status และ process ตาม docs/openapi.yaml; responses ใช้ JSON และส่งเฉพาะ metadata ของ PDF ไม่ส่ง path ภายใน
 - แยกตัวจัดเก็บไฟล์ผ่าน interface ให้ service ประสานงาน: ตรวจเนื้อหา/ขนาด PDF, เก็บชั่วคราว, บันทึกข้อมูลผ่าน repo และเผยแพร่ไฟล์ก่อนรายงานสำเร็จ
 - SQLite transaction ไม่ครอบคลุม filesystem; ต้องกำหนดขั้นตอนชดเชยและกู้คืนเมื่อบันทึก/เผยแพร่ไฟล์ล้มเหลวหรือ process หยุด เพื่อไม่ให้ข้อมูลสำเร็จอ้างไฟล์ที่ไม่มีอยู่ และรักษาข้อมูล/ไฟล์เดิมเมื่อแก้ไขล้มเหลว
@@ -30,7 +39,7 @@
 
 - React pages → components → generated typed API client จาก docs/openapi.yaml; pages/components ห้ามเรียก fetch ตรง และห้ามแก้ generated files ด้วยมือ
 - Pages จัดการ navigation, loading และผลการบันทึก; components รับผิดชอบตาราง ฟอร์มบุคลากร/โครงการ ตัวเลือก PDF ตัวกรอง และ confirmation
-- ใช้ ID เป็นตัวอ้างอิงภายในทุก action แม้ชื่อซ้ำ; การแสดง ID รอข้อสรุปความขัดแย้งใน SPEC
+- ใช้ ID เป็นตัวอ้างอิงภายในทุก action แม้ชื่อซ้ำ ไม่แสดง ID บน UI; แสดงเลขสัญญาทุนและใช้ค้นหาแทน ID รวมการเลือกงานต้นทางและหน้าปรับสถานะ/กระบวนการ
 - ค้นหา/กรองบน frontend จากรายการที่โหลดมา; ยุบตัวกรองโดยคงค่า ล้างค่าได้ และแยกไม่มีข้อมูลออกจากไม่พบผลลัพธ์
 - หลังสร้างสำเร็จกลับหน้ารายการและแสดงงานใหม่; หลังแก้ไข/ลบ/ปรับสถานะ/กระบวนการให้แสดงข้อมูลล่าสุด พร้อมป้องกันการส่งซ้ำและยืนยันก่อนทิ้งข้อมูล
 - ก่อนทำ UI อ่าน .agents/skills/frontend-design/SKILL.md; ตรวจ loading/error/empty/success, responsive, keyboard, focus, contrast และ reduced motion โดยไม่ขยายขอบเขตฟีเจอร์
@@ -38,7 +47,7 @@
 ## Error handling
 
 - Repo ส่ง typed persistence errors → service แปลงเป็น typed business errors → handler map เป็น HTTP status และ error code ตาม SPEC/OpenAPI
-- ใช้ error envelope เดียวทั้งระบบ ไม่เปิดเผย SQL, stack trace หรือ path ภายใน; รูปแบบ error รายฟิลด์ต้องตกลงใน contract ก่อนทำ UI validation errors
+- ใช้ error envelope เดียวทั้งระบบ ไม่เปิดเผย SQL, stack trace หรือ path ภายใน; VALIDATION_ERROR เพิ่ม fieldErrors ที่ไม่ว่าง ส่วน error code อื่นไม่มี fieldErrors
 - แยก validation, not-found, conflict, payload/media errors และ internal failure; กรณี terminal process lock ต้องตรวจตามลำดับที่ SPEC กำหนดก่อน idempotency
 
 ## Testing และการตรวจรับ
