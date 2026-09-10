@@ -67,9 +67,13 @@
 
 ## UX/UI design references
 - ก่อนทำ task ที่เกี่ยวกับการออกแบบหรือ UI ต้องอ่าน `.agents/skills/frontend-design/SKILL.md` ให้ครบ
-- แหล่งความจริงสำหรับงาน UI คือ `docs/SPEC.md` → `docs/openapi.yaml` → `docs/TASKS.md` → `.agents/skills/frontend-design/SKILL.md`
-- Skill ใช้กำหนด UX, visual direction, content, responsive behavior และ accessibility เท่านั้น ห้ามเปลี่ยนขอบเขต กฎธุรกิจ endpoint หรือ Out of scope
-- หากแหล่งอ้างอิงขัดกัน ให้ยึดแหล่งที่อยู่ลำดับสูงกว่า และถาม human ก่อนเมื่อความขัดแย้งกระทบพฤติกรรมหรือขอบเขต
+- ใช้แหล่งอ้างอิงตามหน้าที่:
+   - docs/SPEC.md: ขอบเขต กฎธุรกิจ Acceptance Criteria และ Out of scope
+   - docs/openapi.yaml: endpoint, request/response และ error ของ API
+   - docs/TASKS.md: ขอบเขตของ task ปัจจุบัน dependencies และ DoD
+   - .agents/skills/frontend-design/SKILL.md: แนวทาง UX รูปลักษณ์ ข้อความ responsive และ accessibility
+- Skill ต้องทำงานภายในข้อกำหนดของ SPEC, API contract และ task ห้ามเพิ่มฟีเจอร์ เปลี่ยนกฎธุรกิจ หรือสร้าง endpoint เอง
+- หากเอกสารขัดกันจนกระทบพฤติกรรมหรือขอบเขต ให้รายงานจุดที่ขัดกันและถาม human ก่อนดำเนินการในส่วนที่เกี่ยวข้อง ห้ามเลือกตีความเพื่อขยายขอบเขตเอง
 
 ## Rules (must follow)
 1. Plan ก่อน code ห้ามเขียนโค้ดก่อนเสนอแผนสั้น ๆ ให้ human เห็น

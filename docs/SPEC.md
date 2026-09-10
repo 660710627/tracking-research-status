@@ -68,7 +68,6 @@
 - Authentication / user accounts
 - Deployment
 - Notificaton การแจ้งเตือนให้กับนักวิจัยเมื่องานวิจัยของตนถูกเปลี่ยนสถานะ
-- หน้าสำหรับดูสถานะและกระบวนการ
 - การส่งออกข้อมูลในรูปแบบ Excel
 
 ## Acceptance Criteria
