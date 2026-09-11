@@ -1,0 +1,447 @@
+{
+  "success": [
+    {
+      "id": 101,
+      "title": "โครงการ ก",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-101",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 108,
+      "title": "โครงการ ก",
+      "continuationOfId": 101,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-108",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "CONTINUATION",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 120,
+      "title": "โครงการ ข",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-120",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    }
+  ],
+  "empty": [],
+  "afterCreate": [
+    {
+      "id": 101,
+      "title": "โครงการ ก",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-101",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 108,
+      "title": "โครงการ ก",
+      "continuationOfId": 101,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-108",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "CONTINUATION",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 120,
+      "title": "โครงการ ข",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-120",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 125,
+      "title": "โครงการ ค",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-125",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    }
+  ],
+  "afterUpdate": [
+    {
+      "id": 101,
+      "title": "โครงการ ก",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-101",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 108,
+      "title": "โครงการ ก",
+      "continuationOfId": 101,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนปรับปรุง",
+      "contractNumber": "CN-108",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "CONTINUATION",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 20000,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    },
+    {
+      "id": 120,
+      "title": "โครงการ ข",
+      "continuationOfId": null,
+      "isSubsidized": true,
+      "projectMembers": [
+        {
+          "fullName": "หัวหน้าโครงการ",
+          "email": "lead@example.com",
+          "affiliation": "มหาวิทยาลัย",
+          "contributionPercent": 60,
+          "role": "LEAD"
+        },
+        {
+          "fullName": "ผู้ร่วมโครงการ",
+          "email": "co@example.com",
+          "affiliation": "สถาบัน",
+          "contributionPercent": 40,
+          "role": "CO_RESEARCHER"
+        }
+      ],
+      "fundingType": "INTERNAL",
+      "fundingSourceName": "กองทุนวิจัย",
+      "contractNumber": "CN-120",
+      "contractFile": {
+        "filename": "contract.pdf",
+        "contentType": "application/pdf",
+        "sizeBytes": 512
+      },
+      "projectType": "RESEARCH",
+      "researchKind": "BUDGET",
+      "responsibleProjectUnit": "คณะวิทยาศาสตร์",
+      "responsibleBudgetUnit": "กองคลัง",
+      "startDate": "29/02/2567",
+      "endDate": "01/03/2568",
+      "budgetAmount": 12345.67,
+      "thaiAbstract": "บทคัดย่อไทย",
+      "englishAbstract": "English abstract",
+      "objectives": "วัตถุประสงค์",
+      "keywords": "น้ำ",
+      "status": "กำลังดำเนินการ",
+      "process": "สัญญาโครงการ"
+    }
+  ],
+  "changedIdAfterCreate": 125,
+  "changedIdAfterUpdate": 108,
+  "error": {
+    "error": {
+      "code": "INTERNAL_ERROR",
+      "message": "An unexpected internal error occurred."
+    }
+  }
+}
