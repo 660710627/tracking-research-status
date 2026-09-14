@@ -4,7 +4,7 @@ import { ResearchTable } from '../components/ResearchTable'
 
 export type ResearchChange = { id: number; kind: 'created' | 'updated'; revision: number }
 
-export function ResearchListPage({ change }: { change?: ResearchChange }) {
+export function ResearchListPage({ change, onCreate }: { change?: ResearchChange; onCreate?: () => void }) {
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<
     { kind: 'loading' } | { kind: 'error' } | { kind: 'success'; items: Research[] }
@@ -28,7 +28,7 @@ export function ResearchListPage({ change }: { change?: ResearchChange }) {
     <main id="research-list" tabIndex={-1}>
       <header className="page-heading">
         <div><h1>รายการงานวิจัย</h1><p>ติดตามสถานะและกระบวนการของโครงการทั้งหมด</p></div>
-        <button onClick={refresh} disabled={state.kind === 'loading'}>โหลดข้อมูลใหม่</button>
+        <div className="form-actions"><button onClick={refresh} disabled={state.kind === 'loading'}>โหลดข้อมูลใหม่</button>{onCreate && <button onClick={onCreate}>เพิ่มงานวิจัย</button>}</div>
       </header>
       <section aria-label="รายการโครงการ" aria-busy={state.kind === 'loading'}>
         <div role="status" aria-live="polite">
