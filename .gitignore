@@ -1,6 +1,8 @@
 # Go
 backend/*.db
 backend/bin/
+backend/research-files/
+.gocache/
 
 # Node
 frontend/node_modules/

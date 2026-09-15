@@ -55,7 +55,7 @@ Actual ของทุก case ปัจจุบันคือ **R0 — RED �
 | E28 | AC-14 ตรวจ contrast และ reduced motion | text≥4.5:1, large/UI≥3:1; reduce ปิด animation ไม่จำเป็น ไม่มีข้อมูลสำคัญผูกกับ animation | R0; ยังไม่วัด control ของฟีเจอร์ |
 | E29 | AC-13 ส่งเลขสัญญาซ้ำหลัง Unicode trim/case folding | 409 CONTRACT_NUMBER_ALREADY_EXISTS แจ้งช่องเลขสัญญา คงค่าฟอร์ม | R0 |
 
-## หลักการจาก frontend-design
+## หลักการจาก design-taste-frontend
 
 ใช้ข้อความภาษาไทยที่ระบุการกระทำและแนวทางแก้ไขจริง เช่น บันทึกงานวิจัย/ยกเลิก/ย้อนกลับ แยก empty กับ error และคง focus/responsive/reduced motion ตาม SPEC การเลือกสีหรือสร้างหน้าตาจริงเป็นงาน implementation ไม่ได้ทำใน T-07 นี้
 

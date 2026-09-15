@@ -104,6 +104,7 @@ func (s *ResearchService) Create(ctx context.Context, in CreateResearchInput) (C
 	}
 	normalized.Contract.StoragePath = published.Path
 	normalized.Contract.OriginalFilename = published.Filename
+	normalized.Contract.ContentType = "application/pdf"
 	normalized.Contract.SizeBytes = published.SizeBytes
 	id, err := s.creator.Create(ctx, normalized)
 	if err != nil {

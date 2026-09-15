@@ -30,7 +30,7 @@
     - บทคัดย่อ (อังกฤษ)
     - วัตถุประสงค์โครงการ
     - คำค้น/คำสำคัญ
-- ประเถทสถานะ มีดังนี้
+- ประเภทสถานะ มีดังนี้
   1.กำลังดำเนินการ
   2.กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)
   3.กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)
@@ -63,15 +63,15 @@
 - backend/internal/db/      connection + schema
 - frontend/src/             React app (api/, components/, pages/)
 - docs/                     SPEC.md, PLAN.md, TASKS.md, openapi.yaml ← อ่านก่อนเริ่มงานทุกครั้ง
-- .agents/skills/frontend-design/SKILL.md  แหล่งอ้างอิง UX/UI เพียงแหล่งเดียว ← อ่านก่อนเริ่ม task ออกแบบหรือ UI
+- .agents/skills/design-taste-frontend/SKILL.md  แหล่งอ้างอิง UX/UI เพียงแหล่งเดียว ← อ่านก่อนเริ่ม task ออกแบบหรือ UI
 
 ## UX/UI design references
-- ก่อนทำ task ที่เกี่ยวกับการออกแบบหรือ UI ต้องอ่าน `.agents/skills/frontend-design/SKILL.md` ให้ครบ
+- ก่อนทำ task ที่เกี่ยวกับการออกแบบหรือ UI ต้องอ่าน `.agents/skills/design-taste-frontend/SKILL.md` ให้ครบ
 - ใช้แหล่งอ้างอิงตามหน้าที่:
    - docs/SPEC.md: ขอบเขต กฎธุรกิจ Acceptance Criteria และ Out of scope
    - docs/openapi.yaml: endpoint, request/response และ error ของ API
    - docs/TASKS.md: ขอบเขตของ task ปัจจุบัน dependencies และ DoD
-   - .agents/skills/frontend-design/SKILL.md: แนวทาง UX รูปลักษณ์ ข้อความ responsive และ accessibility
+   - .agents/skills/design-taste-frontend/SKILL.md: แนวทาง UX รูปลักษณ์ ข้อความ responsive และ accessibility
 - Skill ต้องทำงานภายในข้อกำหนดของ SPEC, API contract และ task ห้ามเพิ่มฟีเจอร์ เปลี่ยนกฎธุรกิจ หรือสร้าง endpoint เอง
 - หากเอกสารขัดกันจนกระทบพฤติกรรมหรือขอบเขต ให้รายงานจุดที่ขัดกันและถาม human ก่อนดำเนินการในส่วนที่เกี่ยวข้อง ห้ามเลือกตีความเพื่อขยายขอบเขตเอง
 

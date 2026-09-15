@@ -14,6 +14,7 @@ import (
 )
 
 const defaultDatabasePath = "library.db"
+const defaultStorageRoot = "research-files"
 
 func main() {
 	databasePath := os.Getenv("RESEARCH_DB_PATH")
@@ -33,10 +34,20 @@ func main() {
 
 	healthRepository := repo.NewHealthRepository(database)
 	healthService := service.NewHealthService(healthRepository)
+	storageRoot := os.Getenv("RESEARCH_STORAGE_ROOT")
+	if storageRoot == "" {
+		storageRoot = defaultStorageRoot
+	}
+	contractStore, err := service.NewFileContractStore(storageRoot)
+	if err != nil {
+		log.Fatalf("initialize contract storage: %v", err)
+	}
+	researchRepository := repo.NewResearchRepository(database)
+	researchService := service.NewResearchService(researchRepository, contractStore)
 
 	server := &http.Server{
 		Addr:              ":8080",
-		Handler:           handler.NewRouter(healthService),
+		Handler:           handler.NewRouter(healthService, handler.WithResearchCreator(researchService), handler.WithResearchLister(service.NewResearchListService(researchRepository))),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

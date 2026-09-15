@@ -15,7 +15,7 @@
 - ทุก test ที่แตะ persistence ใช้ SQLite ใหม่ใน t.TempDir() หนึ่ง database ต่อหนึ่ง test; PDF และ fixture ใช้พื้นที่ชั่วคราว ไม่แตะ library.db หรือไฟล์อัปโหลดจริง
 - ระหว่าง implementation ราย layer อาจยังแดงใน layer ที่ยังไม่ได้ทำ ต้องรันคำสั่งเฉพาะ layer ให้ผ่านและรายงานผล go test ./... ที่เหลือแดงตาม DoD; ก่อนปิด backend slice ต้องผ่านทั้งชุด
 - UI test tasks ใช้ E2E checklist ที่ทดลองได้และบันทึก actual/expected พร้อมหลักฐาน RED ก่อนสร้าง UI; ไม่บังคับเพิ่ม framework ทดสอบใหม่ ถ้าใช้ API fixtures ต้องตรง contract และทวนกับ backend จริงก่อนปิด slice
-- UI ทุก task ต้องอ่าน .agents/skills/frontend-design/SKILL.md และใช้ generated typed client; UX ไม่มีสิทธิ์เปลี่ยน AC/API/scope
+- UI ทุก task ต้องอ่าน .agents/skills/design-taste-frontend/SKILL.md และใช้ generated typed client; UX ไม่มีสิทธิ์เปลี่ยน AC/API/scope
 - คำสั่ง backend/frontend รันใน directory ที่ระบุ; รายการคำสั่งหลัง cd ภายใน DoD เดียวกันใช้ directory นั้น เว้นแต่ระบุจาก root
 - ขั้นตอนตรวจรับที่ต้องสร้างข้อมูลให้ใช้ฐานข้อมูล/ไฟล์ทดลองแยก และขอสิทธิ์ระบบตามความจำเป็น; ไม่ push/merge main โดยอัตโนมัติ
 

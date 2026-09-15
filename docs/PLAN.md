@@ -14,7 +14,7 @@
 - ข้อสรุปวงจรไฟล์: PUT ไม่บังคับ PDF ใหม่—ไม่ส่งให้คงไฟล์เดิม ส่งให้แทนที่เมื่อทุกขั้นสำเร็จและ failure ต้องคืนสภาพเดิม; DELETE ต้องลบทั้งข้อมูล/metadata/PDF และ failure ต้องคงของเดิม ห้ามรายงานสำเร็จแบบบางส่วน
 - ข้อสรุป mutation: UI ปิดปุ่มระหว่าง submit และไม่ retry mutation อัตโนมัติ; POST ซ้ำเป็นคำขอใหม่และผ่าน duplicate constraints ตามปกติ; PUT พร้อมกันใช้ last-successful-write-wins โดยไม่เพิ่ม version/If-Match
 - ข้อสรุปค้นหา: frontend ค้นหาแบบ Unicode-trimmed, case-insensitive substring เฉพาะชื่อ/เลขสัญญาทุน; เลขสัญญาทุน unique ด้วย normalized key ในฐานข้อมูล
-- ข้อสรุป validation/PDF/UI: VALIDATION_ERROR มี fieldErrors; PDF ต้อง parse สมบูรณ์ มีอย่างน้อย 1 หน้าและไม่ encrypted พร้อม startup reconciliation; E2E ใช้ viewport 375×667 และ 1280×720, WCAG 2.2 AA, keyboard/focus และ reduced motion ตาม AC-14
+- ข้อสรุป validation/PDF/UI: VALIDATION_ERROR มี fieldErrors; PDF ต้อง parse สมบูรณ์ มีอย่างน้อย 1 หน้าและไม่ encrypted พร้อม startup reconciliation; UI รองรับเฉพาะเดสก์ท็อปตามคำขอล่าสุด E2E ใช้ viewport 1280×720, WCAG 2.2 AA, keyboard/focus และ reduced motion ตาม AC-14
 - การอ้างเลข AC ใน SQL ปรับให้ตรงแล้ว: validation คือ AC-04, สถานะคือ AC-11 และกระบวนการคือ AC-12
 - ไม่รวม deployment, notification และ Excel export ตาม SPEC; ยังไม่ออกแบบ authentication เพิ่มเพื่อแก้ข้อขัดแย้งเอง
 
@@ -42,7 +42,7 @@
 - ใช้ ID เป็นตัวอ้างอิงภายในทุก action แม้ชื่อซ้ำ ไม่แสดง ID บน UI; แสดงเลขสัญญาทุนและใช้ค้นหาแทน ID รวมการเลือกงานต้นทางและหน้าปรับสถานะ/กระบวนการ
 - ค้นหา/กรองบน frontend จากรายการที่โหลดมา; ยุบตัวกรองโดยคงค่า ล้างค่าได้ และแยกไม่มีข้อมูลออกจากไม่พบผลลัพธ์
 - หลังสร้างสำเร็จกลับหน้ารายการและแสดงงานใหม่; หลังแก้ไข/ลบ/ปรับสถานะ/กระบวนการให้แสดงข้อมูลล่าสุด พร้อมป้องกันการส่งซ้ำและยืนยันก่อนทิ้งข้อมูล
-- ก่อนทำ UI อ่าน .agents/skills/frontend-design/SKILL.md; ตรวจ loading/error/empty/success, responsive, keyboard, focus, contrast และ reduced motion โดยไม่ขยายขอบเขตฟีเจอร์
+- ก่อนทำ UI อ่าน .agents/skills/design-taste-frontend/SKILL.md; ตรวจ loading/error/empty/success, responsive, keyboard, focus, contrast และ reduced motion โดยไม่ขยายขอบเขตฟีเจอร์
 
 ## Error handling
 

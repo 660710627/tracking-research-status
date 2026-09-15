@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/660710627/my-research/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,11 +25,39 @@ type errorResponse struct {
 }
 
 type errorBody struct {
-	Code    string `json:"code"`
+	Code        string           `json:"code"`
+	Message     string           `json:"message"`
+	FieldErrors []fieldErrorBody `json:"fieldErrors,omitempty"`
+}
+
+type fieldErrorBody struct {
+	Field   string `json:"field"`
 	Message string `json:"message"`
 }
 
-func NewRouter(health HealthChecker) http.Handler {
+type ResearchCreator interface {
+	Create(context.Context, service.CreateResearchInput) (service.CreatedResearch, error)
+}
+
+type Option func(*routerConfig)
+
+type routerConfig struct {
+	researchCreator ResearchCreator
+	researchLister  ResearchLister
+}
+
+func WithResearchCreator(creator ResearchCreator) Option {
+	return func(config *routerConfig) {
+		config.researchCreator = creator
+	}
+}
+
+func NewRouter(health HealthChecker, options ...Option) http.Handler {
+	config := routerConfig{}
+	for _, option := range options {
+		option(&config)
+	}
+
 	router := gin.New()
 	router.HandleMethodNotAllowed = true
 	router.Use(recoverAsJSON())
@@ -40,6 +69,12 @@ func NewRouter(health HealthChecker) http.Handler {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	if config.researchCreator != nil {
+		router.POST("/api/v1/researches", createResearchHandler(config.researchCreator))
+	}
+	if config.researchLister != nil {
+		router.GET("/api/v1/researches", listResearchHandler(config.researchLister))
+	}
 
 	router.NoRoute(func(c *gin.Context) {
 		writeError(c, http.StatusNotFound, codeRouteNotFound, "Route was not found.")
