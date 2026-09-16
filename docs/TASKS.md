@@ -2,6 +2,13 @@
 
 ทำตามลำดับเท่านั้น งาน test ต้องเสร็จก่อนงาน implement ของ slice เดียวกัน และห้ามแก้ test เพื่อให้ผ่าน
 
+## Demo track — ไม่ใช่ production
+
+### DEMO-01 — Interactive mockup สำหรับสาธิต
+- **สิ่งที่ทำ:** สร้าง frontend prototype ด้วยข้อมูลในหน่วยความจำสำหรับ login/role, รายการและค้นหา, เพิ่มงาน, รายละเอียด, status/process และบัญชีผู้ใช้; แสดงคำว่า Prototype ชัดเจนและไม่เชื่อม backend
+- **Dependencies:** T-01
+- **DoD:** frontend lint/build ผ่าน; walkthrough หลักใช้งานได้; loading/error/empty/success, keyboard/focus/contrast/responsive/reduced motion พร้อมสาธิต; ไม่มี direct fetch
+
 ## Phase 0 — Contract และ walking skeleton
 
 ### T-01 — API contract
