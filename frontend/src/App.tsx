@@ -68,10 +68,48 @@ function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items
   </main>
 }
 
+const detailSamples: Record<number, { fundingType:string; fund:string; start:string; collaborators:string; thai:string; english:string; objectives:string[]; keywords:string[] }> = {
+  101: {fundingType:'ภายใน',fund:'ทุนอุดหนุนการวิจัย มหาวิทยาลัยศิลปากร',start:'1 ต.ค. 2569',collaborators:'ดร. ปราณี ใจดี; ผศ. ดร. ธนา วงศ์วิจัย',thai:'ศึกษาการใช้เส้นใยจากวัสดุเหลือใช้ทางการเกษตรเพื่อผลิตวัสดุดูดซับสารปนเปื้อนในน้ำ เปรียบเทียบวิธีเตรียมเส้นใยและประสิทธิภาพการดูดซับในห้องปฏิบัติการ พร้อมประเมินการนำกลับมาใช้ซ้ำและต้นทุนเบื้องต้น เพื่อพัฒนาแนวทางใช้ประโยชน์จากทรัพยากรท้องถิ่น',english:'This study investigates agricultural waste fibers as adsorbents for water treatment. Preparation methods, adsorption performance, reusability, and preliminary costs are compared to support the practical use of local resources.',objectives:['พัฒนาวัสดุดูดซับจากเส้นใยธรรมชาติ','เปรียบเทียบประสิทธิภาพการดูดซับและการใช้ซ้ำ','ประเมินต้นทุนการผลิตระดับห้องปฏิบัติการ'],keywords:['เส้นใยธรรมชาติ','วัสดุดูดซับ','การบำบัดน้ำ']},
+  102: {fundingType:'ภายนอก',fund:'สำนักงานการวิจัยแห่งชาติ (ข้อมูลสาธิต)',start:'1 เม.ย. 2569',collaborators:'ดร. สุธี รักษ์น้ำ; ดร. มาลี พัฒนกิจ',thai:'พัฒนาต้นแบบระบบติดตามคุณภาพน้ำโดยรวบรวมค่าจากเซนเซอร์และวิเคราะห์ด้วยแบบจำลองปัญญาประดิษฐ์ ศึกษาความแม่นยำในการตรวจหาค่าผิดปกติและเปรียบเทียบกับผลตรวจวัดมาตรฐาน เพื่อสนับสนุนการเฝ้าระวังคุณภาพน้ำในพื้นที่ศึกษา',english:'This project develops a water-quality monitoring prototype combining sensor measurements with artificial intelligence. Anomaly detection is evaluated against reference measurements to support monitoring in the study area.',objectives:['พัฒนาต้นแบบระบบเก็บข้อมูลคุณภาพน้ำ','ประเมินแบบจำลองตรวจหาค่าผิดปกติ','ทดสอบการใช้งานร่วมกับหน่วยงานในพื้นที่'],keywords:['คุณภาพน้ำ','ปัญญาประดิษฐ์','เซนเซอร์']},
+  103: {fundingType:'ภายใน',fund:'ทุนสนับสนุนงานวิจัยพื้นฐาน (ข้อมูลสาธิต)',start:'1 ก.ค. 2569',collaborators:'ดร. วรางคณา ศิลป์สกุล',thai:'ศึกษาทุนทางวัฒนธรรมของชุมชนผ่านการสัมภาษณ์ การสำรวจ และกระบวนการมีส่วนร่วม เพื่อรวบรวมองค์ความรู้ท้องถิ่นและวิเคราะห์แนวทางพัฒนาผลิตภัณฑ์สร้างสรรค์ โดยคำนึงถึงอัตลักษณ์และความต้องการของคนในชุมชน',english:'This study explores community cultural assets through interviews, surveys, and participatory activities. Local knowledge informs creative product development while preserving community identity and addressing local needs.',objectives:['จัดทำข้อมูลทุนทางวัฒนธรรมชุมชน','วิเคราะห์โอกาสพัฒนาผลิตภัณฑ์สร้างสรรค์','เสนอแนวทางใช้ประโยชน์ร่วมกับชุมชน'],keywords:['ทุนทางวัฒนธรรม','เศรษฐกิจสร้างสรรค์','ชุมชน']},
+  104: {fundingType:'ภายใน',fund:'ทุนอุดหนุนการวิจัย มหาวิทยาลัยศิลปากร',start:'1 ม.ค. 2568',collaborators:'ผศ. ดร. อรุณ อนุรักษ์',thai:'รวบรวมและจัดหมวดหมู่ข้อมูลจิตรกรรมฝาผนังในพื้นที่ภาคกลาง โดยบันทึกภาพ รายละเอียดแหล่งที่ตั้ง และลักษณะทางศิลปกรรม จัดทำต้นแบบฐานข้อมูลเพื่อสนับสนุนการศึกษาและการอนุรักษ์มรดกทางวัฒนธรรม',english:'This project documents and classifies mural paintings in central Thailand. Images, locations, and artistic characteristics are organized into a prototype database for research and cultural heritage conservation.',objectives:['สำรวจและบันทึกจิตรกรรมฝาผนัง','จัดหมวดหมู่ข้อมูลทางศิลปกรรม','พัฒนาฐานข้อมูลสำหรับการศึกษาและอนุรักษ์'],keywords:['จิตรกรรมฝาผนัง','ฐานข้อมูล','มรดกวัฒนธรรม']},
+}
+
 function Detail({research,onBack,onUpdate,canManage}:{canManage:boolean;research:Research;onBack:()=>void;onUpdate:(r:Research)=>void}) {
+  const sample=detailSamples[research.id]
+  const unspecified='ยังไม่ได้ระบุ'
   const terminal=research.status.includes('เสร็จสิ้น')||research.status.includes('ยุติ')
   return <main className="page"><button className="back-link" onClick={onBack}>← กลับทะเบียนงานวิจัย</button><Header title={research.title} subtitle={research.contract+' · '+research.kind}/>
-    <div className="detail-grid"><section className="project-sheet"><div className="sheet-label">ข้อมูลโครงการ</div><dl><div><dt>หัวหน้าโครงการ</dt><dd>{research.lead}</dd></div><div><dt>หน่วยงาน</dt><dd>{research.unit}</dd></div><div><dt>งบประมาณ</dt><dd>{research.budget.toLocaleString('th-TH')} บาท</dd></div><div><dt>วันสิ้นสุด</dt><dd>{research.endDate}</dd></div></dl><div className="abstract"><h2>บทคัดย่อ</h2><p>โครงการวิจัยนี้ศึกษาการประยุกต์ใช้องค์ความรู้เพื่อสร้างผลลัพธ์ที่นำไปใช้ประโยชน์ได้จริง โดยเชื่อมโยงนักวิจัย หน่วยงาน และชุมชนอย่างเป็นระบบ</p></div><p className="demo-note">ไฟล์สัญญาทุนจะแสดงเมื่อเชื่อมต่อข้อมูลจริง</p></section>
+    <div className="detail-grid research-detail"><section className="project-sheet research-sheet" aria-label="รายละเอียดงานวิจัย">
+      <p className="detail-demo">ข้อมูลประกอบตัวอย่างสำหรับสาธิต</p>
+      <h2>ข้อมูลโครงการ</h2>
+      <dl className="facts-grid">
+        <div className="wide"><dt>ชื่อโครงการ</dt><dd>{research.title}</dd></div>
+        <div><dt>ประเภทโครงการ</dt><dd>งานวิจัย</dd></div>
+        <div><dt>ทุนอุดหนุน / ประเภทที่เกี่ยวข้อง</dt><dd>{sample?'ทุนอุดหนุนการวิจัย':unspecified}</dd></div>
+        <div><dt>สถานะการดำเนินงาน</dt><dd>{research.kind==='โครงการต่อเนื่อง'?'โครงการต่อเนื่อง':'โครงการในงบประมาณ'}</dd></div>
+        <div><dt>หน่วยงานรับผิดชอบโครงการ</dt><dd>{research.unit}</dd></div>
+        <div><dt>หน่วยงานรับผิดชอบงบประมาณ</dt><dd>{sample?research.unit:unspecified}</dd></div>
+        <div><dt>ระยะเวลาวิจัย เริ่ม–สิ้นสุด</dt><dd>{sample?.start??unspecified} – {research.endDate}</dd></div>
+        <div><dt>งบประมาณโครงการ</dt><dd className="budget-value">{research.budget.toLocaleString('th-TH',{minimumFractionDigits:2})} บาท</dd></div>
+      </dl>
+      <h2>บุคลากรและแหล่งทุน</h2>
+      <dl className="facts-grid">
+        <div><dt>หัวหน้าโครงการ</dt><dd>{research.lead}</dd></div>
+        <div><dt>ผู้ร่วมโครงการ</dt><dd>{sample?.collaborators??unspecified}</dd></div>
+        <div><dt>ประเภทแหล่งทุน</dt><dd>{sample?.fundingType??unspecified}</dd></div>
+        <div><dt>ชื่อแหล่งทุน</dt><dd>{sample?.fund??unspecified}</dd></div>
+        <div><dt>เลขที่สัญญาทุน</dt><dd>{research.contract}</dd></div>
+        <div><dt>ไฟล์สัญญารับทุน</dt><dd className="muted">ยังไม่มีไฟล์แนบใน mockup</dd></div>
+      </dl>
+      <div className="research-texts">
+        <section><h2>บทคัดย่อ (ไทย)</h2><p>{sample?.thai??unspecified}</p></section>
+        <section><h2>บทคัดย่อ (อังกฤษ)</h2><p lang="en">{sample?.english??unspecified}</p></section>
+      </div>
+      <h2>วัตถุประสงค์โครงการ</h2>
+      {sample?<ol className="objectives">{sample.objectives.map(item=><li key={item}>{item}</li>)}</ol>:<p>{unspecified}</p>}
+      <div className="keyword-row"><h2>คำค้น / คำสำคัญ</h2>{sample?sample.keywords.map(word=><span key={word}>{word}</span>):<span>{unspecified}</span>}</div>
+    </section>
       <section className="journey"><div className="journey-head"><div><span className="journey-count">ขั้นตอน {research.process} จาก 8</span><h2>เส้นทางโครงการ</h2></div><span className={terminal?'status done':'status'}>{research.status}</span></div><ol>{processSteps.map((item,index)=><li key={item} className={index+1<research.process?'complete':index+1===research.process?'current':''}><span>{index+1<research.process?'✓':String(index+1).padStart(2,'0')}</span><div><b>{item}</b>{index+1===research.process&&<small>ขั้นตอนปัจจุบัน · รอดำเนินการ</small>}</div></li>)}</ol>{canManage&&!terminal&&<div className="journey-actions"><button className="primary" disabled={research.process===8} onClick={()=>onUpdate({...research,process:Math.min(8,research.process+1)})}>เลื่อนไปขั้นถัดไป</button><button className="secondary" onClick={()=>onUpdate({...research,status:'โครงการเสร็จสิ้น'})}>ปิดโครงการ</button></div>}</section>
     </div></main>
 }
