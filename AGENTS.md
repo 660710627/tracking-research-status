@@ -74,7 +74,10 @@
 ## References for the next design cycle
 - docs/SPEC.md: ขอบเขต กฎธุรกิจ และเกณฑ์การยอมรับของระบบ
 - docs/openapi.yaml: endpoint, request/response และรูปแบบข้อผิดพลาดของ API
-- `C:\Users\Balloon\.codex\skills\frontend-design\SKILL.md`: แนวทางออกแบบ UI ที่เลือกใช้สำหรับรอบใหม่
+- `frontend-design` จาก `anthropics/skills`: แหล่งอ้างอิง UX/UI หลักสำหรับงานออกแบบและ UI
+  - ไฟล์ที่ติดตั้งบนเครื่องนี้: `C:/Users/Lenovo/.codex/skills/frontend-design/SKILL.md`
+  - ต้นทาง: https://github.com/anthropics/skills/tree/main/skills/frontend-design
+  - เมื่อทำงานบนเครื่องอื่น ให้ใช้ skill ชื่อเดียวกันที่ติดตั้งใน `$CODEX_HOME/skills/frontend-design/SKILL.md`
 - ก่อนเริ่มงานออกแบบหรือ UI ต้องอ่าน Skill ออกแบบข้างต้นให้ครบ
 - ห้ามเพิ่มฟีเจอร์ เปลี่ยนกฎธุรกิจ หรือเปลี่ยน API โดยไม่ได้รับอนุมัติ
 - หากเอกสารขัดกันจนกระทบพฤติกรรมหรือขอบเขต ให้รายงานจุดที่ขัดกันและถาม human ก่อนดำเนินการ
