@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { isTerminal, nextStatuses } from './research'
-import type { Research, ResearchAction, ResearchFields } from './research'
+import type { Research, ResearchAction } from './research'
 
 function Modal({title, children, onCancel}:{title:string; children:ReactNode; onCancel:()=>void}) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -46,17 +46,4 @@ export function StatusPanel({research,canManage,onRequest}:{research:Research;ca
     <p className="status-caption">สถานะปัจจุบัน</p><p className={terminal?'status done':'status'}>{research.status}</p>
     {canManage&&!terminal?<><label className="status-select">เปลี่ยนสถานะเป็น<select value={target} onChange={event=>setTarget(event.target.value)} aria-describedby="status-help"><option value="">เลือกสถานะใหม่</option>{options.map(status=><option key={status}>{status}</option>)}</select></label><p id="status-help" className="helper-text">เลือกได้เฉพาะสถานะที่ไปข้างหน้า เมื่อบันทึกแล้วจะย้อนกลับไม่ได้</p><div className="status-actions"><button className="primary" disabled={!options.some(status=>status===target)} onClick={()=>onRequest({type:'status',status:target})}>ปรับสถานะ</button><button className="danger-outline" onClick={()=>onRequest({type:'status',status:'ยุติโครงการ'})}>ยุติโครงการ</button></div></>:<p className="helper-text">{terminal?'โครงการสิ้นสุดแล้ว ไม่สามารถปรับสถานะหรือกระบวนการได้':'ผู้ประสานงานหรือผู้ดูแลระบบเป็นผู้ปรับสถานะโครงการ'}</p>}
   </section>
-}
-
-export function EditResearch({research,onCancel,onSave}:{research:Research;onCancel:()=>void;onSave:(fields:ResearchFields)=>string|null}) {
-  const [fields,setFields]=useState<ResearchFields>({title:research.title,contract:research.contract,lead:research.lead,unit:research.unit,budget:research.budget,endDate:research.endDate})
-  const [error,setError]=useState('')
-  return <Modal title="แก้ไขงานวิจัย" onCancel={onCancel}>
-    <p className="helper-text">แก้ไขข้อมูลหลักของโครงการตัวอย่าง โดยคงสถานะและกระบวนการปัจจุบัน</p>
-    <form onSubmit={event=>{event.preventDefault();const message=onSave(fields);if(message)setError(message)}}>
-      {error&&<p className="notice" role="alert">{error}</p>}
-      <div className="edit-grid">{([['title','ชื่อโครงการ'],['contract','เลขที่สัญญาทุน'],['lead','หัวหน้าโครงการ'],['unit','หน่วยงานรับผิดชอบโครงการ'],['endDate','วันสิ้นสุด']] as const).map(([key,label])=><label key={key} className={key==='title'?'wide':''}>{label} *<input required value={fields[key]} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}<label>งบประมาณ (บาท) *<input required type="number" min="0.01" step="0.01" value={Number.isNaN(fields.budget)?'':fields.budget} onChange={event=>setFields({...fields,budget:event.target.valueAsNumber})}/></label></div>
-      <div className="form-actions"><button data-cancel type="button" className="secondary" onClick={onCancel}>ยกเลิก</button><button type="submit" className="primary">บันทึกการแก้ไข</button></div>
-    </form>
-  </Modal>
 }

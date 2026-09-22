@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
-import { canManageResearch, changeResearch, isTerminal, statuses } from './research'
-import type { Research, ResearchAction, Role } from './research'
-import { ConfirmResearch, EditResearch, StatusPanel } from './ResearchControls'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { canManageResearch, changeResearch, isTerminal, researchDraft, statuses } from './research'
+import type { Research, ResearchAction, ResearchDraft, Role } from './research'
+import { ConfirmResearch, StatusPanel } from './ResearchControls'
+import ResearchSheet from './ResearchSheet'
 import AdminPreview from './AdminPreview'
 import { adminModules } from './adminModules'
 import type { AdminView } from './adminModules'
@@ -82,48 +83,33 @@ const detailSamples: Record<number, { fundingType:string; fund:string; start:str
 
 function Detail({research,onBack,onChange,canManage}:{canManage:boolean;research:Research;onBack:()=>void;onChange:(action:ResearchAction)=>string|null}) {
   const [pending,setPending]=useState<Exclude<ResearchAction,{type:'edit'}>|null>(null)
-  const [editing,setEditing]=useState(false)
+  const [draft,setDraft]=useState<ResearchDraft|null>(null)
+  const editing=draft!==null
   const [error,setError]=useState('')
-  const sample=detailSamples[research.id]
-  const unspecified='ยังไม่ได้ระบุ'
+  const editButton=useRef<HTMLButtonElement>(null)
+  const errorMessage=useRef<HTMLParagraphElement>(null)
+  const wasEditing=useRef(false)
+  useEffect(()=>{
+    if(wasEditing.current&&!editing)editButton.current?.focus()
+    wasEditing.current=editing
+  },[editing])
+  useEffect(()=>{if(error)errorMessage.current?.focus()},[error])
+  const fields=draft??researchDraft(research)
+  const cancelEdit=()=>{setDraft(null);setError('')}
+  const saveEdit=()=>{
+    if(!draft)return
+    const message=onChange({type:'edit',fields:draft})
+    setError(message??'')
+    if(!message)setDraft(null)
+  }
   const terminal=isTerminal(research.status)
-  return <main className="page"><button className="back-link" onClick={onBack}>← กลับทะเบียนงานวิจัย</button><Header title={research.title} subtitle={research.contract+' · '+research.kind}/>
-    {canManage&&<div className="research-toolbar"><button className="secondary" onClick={()=>setEditing(true)}>แก้ไขงานวิจัย</button><button className="danger-outline" onClick={()=>setPending({type:'delete'})}>ลบงานวิจัย</button></div>}
-    {error&&<p className="notice" role="alert">{error}</p>}
-    {editing&&<EditResearch research={research} onCancel={()=>setEditing(false)} onSave={fields=>{const message=onChange({type:'edit',fields});if(!message)setEditing(false);return message}}/>}
+  return <main className="page"><button className="back-link" disabled={editing} onClick={onBack}>← กลับทะเบียนงานวิจัย</button><Header title={research.title} subtitle={research.contract+' · '+research.kind}/>
+    {canManage&&<div className="research-toolbar">{editing?<><span className="editing-label" role="status">กำลังแก้ไขข้อมูล</span><button className="secondary" onClick={cancelEdit}>ยกเลิกการแก้ไข</button><button className="primary" type="submit" form="research-edit-form">บันทึกการแก้ไข</button></>:<><button ref={editButton} className="secondary" onClick={()=>{setDraft(researchDraft(research));setError('')}}>แก้ไขงานวิจัย</button><button className="danger-outline" onClick={()=>setPending({type:'delete'})}>ลบงานวิจัย</button></>}</div>}
+    {error&&<p ref={errorMessage} tabIndex={-1} className="notice" role="alert">{error}</p>}
     {pending&&<ConfirmResearch research={research} action={pending} onCancel={()=>setPending(null)} onConfirm={()=>{const message=onChange(pending);setPending(null);setError(message??'')}}/>}
-    <div className="detail-grid research-detail"><section className="project-sheet research-sheet" aria-label="รายละเอียดงานวิจัย">
-      <p className="detail-demo">ข้อมูลประกอบตัวอย่างสำหรับสาธิต</p>
-      <h2>ข้อมูลโครงการ</h2>
-      <dl className="facts-grid">
-        <div className="wide"><dt>ชื่อโครงการ</dt><dd>{research.title}</dd></div>
-        <div><dt>ประเภทโครงการ</dt><dd>งานวิจัย</dd></div>
-        <div><dt>ทุนอุดหนุน / ประเภทที่เกี่ยวข้อง</dt><dd>{sample?'ทุนอุดหนุนการวิจัย':unspecified}</dd></div>
-        <div><dt>สถานะการดำเนินงาน</dt><dd>{research.kind==='โครงการต่อเนื่อง'?'โครงการต่อเนื่อง':'โครงการในงบประมาณ'}</dd></div>
-        <div><dt>หน่วยงานรับผิดชอบโครงการ</dt><dd>{research.unit}</dd></div>
-        <div><dt>หน่วยงานรับผิดชอบงบประมาณ</dt><dd>{sample?research.unit:unspecified}</dd></div>
-        <div><dt>ระยะเวลาวิจัย เริ่ม–สิ้นสุด</dt><dd>{sample?.start??unspecified} – {research.endDate}</dd></div>
-        <div><dt>งบประมาณโครงการ</dt><dd className="budget-value">{research.budget.toLocaleString('th-TH',{minimumFractionDigits:2})} บาท</dd></div>
-      </dl>
-      <h2>บุคลากรและแหล่งทุน</h2>
-      <dl className="facts-grid">
-        <div><dt>หัวหน้าโครงการ</dt><dd>{research.lead}</dd></div>
-        <div><dt>ผู้ร่วมโครงการ</dt><dd>{sample?.collaborators??unspecified}</dd></div>
-        <div><dt>ประเภทแหล่งทุน</dt><dd>{sample?.fundingType??unspecified}</dd></div>
-        <div><dt>ชื่อแหล่งทุน</dt><dd>{sample?.fund??unspecified}</dd></div>
-        <div><dt>เลขที่สัญญาทุน</dt><dd>{research.contract}</dd></div>
-        <div><dt>ไฟล์สัญญารับทุน</dt><dd className="muted">ยังไม่มีไฟล์แนบใน mockup</dd></div>
-      </dl>
-      <div className="research-texts">
-        <section><h2>บทคัดย่อ (ไทย)</h2><p>{sample?.thai??unspecified}</p></section>
-        <section><h2>บทคัดย่อ (อังกฤษ)</h2><p lang="en">{sample?.english??unspecified}</p></section>
-      </div>
-      <h2>วัตถุประสงค์โครงการ</h2>
-      {sample?<ol className="objectives">{sample.objectives.map(item=><li key={item}>{item}</li>)}</ol>:<p>{unspecified}</p>}
-      <div className="keyword-row"><h2>คำค้น / คำสำคัญ</h2>{sample?sample.keywords.map(word=><span key={word}>{word}</span>):<span>{unspecified}</span>}</div>
-    </section>
-      <aside className="research-tracking"><StatusPanel key={research.status} research={research} canManage={canManage} onRequest={action=>{if(action.type!=='edit')setPending(action)}}/>
-      <section className="journey"><div className="journey-head"><div><span className="journey-count">ขั้นตอน {research.process} จาก 8</span><h2>กระบวนการงานวิจัย</h2></div></div><ol>{processSteps.map((item,index)=><li key={item} className={index+1<research.process?'complete':index+1===research.process?'current':''}><span>{index+1<research.process?'✓':String(index+1).padStart(2,'0')}</span><div><b>{item}</b>{index+1===research.process&&<small>{terminal?'ขั้นตอนเมื่อสิ้นสุดโครงการ':'ขั้นตอนปัจจุบัน'}</small>}</div></li>)}</ol>{canManage&&!terminal&&<div className="journey-actions"><button className="primary" disabled={research.process===8} onClick={()=>setPending({type:'process',process:research.process+1})}>เลื่อนไปขั้นถัดไป</button>{research.process===8&&<p className="helper-text">ถึงกระบวนการสุดท้ายแล้ว ปรับสถานะเป็นโครงการเสร็จสิ้นได้ในส่วนสถานะงานวิจัย</p>}</div>}</section></aside>
+    <div className="detail-grid research-detail"><ResearchSheet research={research} fields={fields} editing={editing} onFields={setDraft} onSave={saveEdit} onCancel={cancelEdit}/>
+      <aside className="research-tracking">{editing&&<p className="edit-progress-note">บันทึกหรือยกเลิกการแก้ไขข้อมูลก่อนปรับสถานะและกระบวนการ</p>}<fieldset className="tracking-controls" disabled={editing}><StatusPanel key={research.status} research={research} canManage={canManage} onRequest={action=>{if(action.type!=='edit')setPending(action)}}/>
+      <section className="journey"><div className="journey-head"><div><span className="journey-count">ขั้นตอน {research.process} จาก 8</span><h2>กระบวนการงานวิจัย</h2></div></div><ol>{processSteps.map((item,index)=><li key={item} className={index+1<research.process?'complete':index+1===research.process?'current':''}><span>{index+1<research.process?'✓':String(index+1).padStart(2,'0')}</span><div><b>{item}</b>{index+1===research.process&&<small>{terminal?'ขั้นตอนเมื่อสิ้นสุดโครงการ':'ขั้นตอนปัจจุบัน'}</small>}</div></li>)}</ol>{canManage&&!terminal&&<div className="journey-actions"><button className="primary" disabled={research.process===8} onClick={()=>setPending({type:'process',process:research.process+1})}>เลื่อนไปขั้นถัดไป</button>{research.process===8&&<p className="helper-text">ถึงกระบวนการสุดท้ายแล้ว ปรับสถานะเป็นโครงการเสร็จสิ้นได้ในส่วนสถานะงานวิจัย</p>}</div>}</section></fieldset></aside>
     </div></main>
 }
 
@@ -141,7 +127,10 @@ function FormHeading({number,title,text}:{number:string;title:string;text:string
 export default function App(){
   const [role,setRole]=useState<Role|null>(null)
   const [view,setView]=useState<View>('list')
-  const [researches,setResearches]=useState(seed)
+  const [researches,setResearches]=useState<Research[]>(()=>seed.map(item=>{
+    const sample=detailSamples[item.id]
+    return {...item,projectType:'งานวิจัย',isSubsidized:true,budgetUnit:item.unit,startDate:sample.start,collaborators:sample.collaborators,fundingType:sample.fundingType,fund:sample.fund,thai:sample.thai,english:sample.english,objectives:[...sample.objectives],keywords:[...sample.keywords],contractFile:null}
+  }))
   const [selected,setSelected]=useState(101)
   const [toast,setToast]=useState('')
   if(!role)return <Login onLogin={nextRole=>{setRole(nextRole);setView('list');setToast('')}}/>

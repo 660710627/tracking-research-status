@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { changeResearch, nextStatuses, statuses } from '../src/research.ts'
+import { changeResearch, nextStatuses, researchDraft, statuses } from '../src/research.ts'
 
 const item = {id:101,title:'โครงการเดิม',contract:'A-01',lead:'หัวหน้า',unit:'คณะ',budget:100,status:statuses[0],process:3,kind:'โครงการหลัก',endDate:'30 ก.ย. 2570'}
 test('researchers cannot edit, delete, change status or process', () => {
@@ -38,4 +38,27 @@ test('process changes preserve status and stop at terminal projects or the final
   assert.equal(changeResearch([item],101,'ผู้ประสานงาน',{type:'process',process:4})[0].status,statuses[0])
   for (const process of [2,3,5,9]) assert.throws(() => changeResearch([item],101,'ผู้ดูแลระบบ',{type:'process',process}))
   for (const status of statuses.slice(4)) assert.throws(() => changeResearch([{...item,status}],101,'ผู้ดูแลระบบ',{type:'process',process:4}))
+})
+
+test('inline edit draft is independent and saves every displayed project detail', () => {
+  const original={...item,objectives:['เดิม'],keywords:['เดิม'],contractFile:new File(['%PDF-demo'],'old.pdf',{type:'application/pdf'})}
+  const draft=researchDraft(original)
+  draft.objectives.push('ร่างที่ยังไม่บันทึก')
+  draft.keywords[0]='คำค้นใหม่'
+  assert.deepEqual(original.objectives,['เดิม'])
+  assert.deepEqual(original.keywords,['เดิม'])
+  const details={projectType:'บริการวิชาการ',isSubsidized:false,budgetUnit:'หน่วยงบประมาณใหม่',startDate:'1 ม.ค. 2569',collaborators:'ผู้ร่วมใหม่',fundingType:'ภายนอก',fund:'ทุนใหม่',thai:'บทคัดย่อใหม่',english:'New abstract',objectives:['เป้าหมายใหม่'],keywords:['คำค้นใหม่'],contractFile:new File(['%PDF-demo-new'],'new.pdf',{type:'application/pdf'})}
+  const [saved]=changeResearch([original],101,'ผู้ประสานงาน',{type:'edit',fields:{...draft,...details,kind:'โครงการต่อเนื่อง',id:999,status:statuses[5],process:8}})
+  for(const [key,value] of Object.entries(details))assert.deepEqual(saved[key],value)
+  assert.equal(saved.kind,item.kind)
+  assert.equal(saved.id,item.id)
+  assert.equal(saved.status,item.status)
+  assert.equal(saved.process,item.process)
+  assert.equal(original.contractFile.name,'old.pdf')
+  assert.throws(()=>changeResearch([original],101,'นักวิจัย',{type:'edit',fields:draft}),/ไม่มีสิทธิ์/)
+})
+
+test('invalid inline selections and attachments fail without modifying the project', () => {
+  for(const patch of [{projectType:'invalid'},{fundingType:'invalid'},{contractFile:new File(['x'],'file.txt',{type:'text/plain'})},{contractFile:new File([],'empty.pdf',{type:'application/pdf'})}])assert.throws(()=>changeResearch([item],101,'ผู้ดูแลระบบ',{type:'edit',fields:{...item,...patch}}))
+  assert.equal(item.title,'โครงการเดิม')
 })

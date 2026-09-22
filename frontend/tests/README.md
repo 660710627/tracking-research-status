@@ -29,6 +29,21 @@ Browser verification, 17 September 2026:
 - No browser console errors during the verified flows. Existing reduced-motion
   CSS disables animations/transitions; new dialogs add no animations.
 
-Basic-data pages are previews only. Research edits cover the core fields
-currently stored by the demo: title, contract, lead, unit, budget and end date.
-All changes reset on page reload; API and database behavior are unchanged.
+Inline detail editing verification:
+
+- Clicking Edit renders inputs in the existing detail sheet with no dialog.
+  Initial focus moves to the project title; Save and Cancel return focus to Edit.
+- Editing covers project type, subsidy, both responsible units, start/end dates,
+  budget, lead/collaborators, funding type/source, contract, PDF attachment,
+  both abstracts, objectives and keywords, in addition to the title.
+- Cancel discards title and abstract drafts. Saving updates all text/select
+  fields in the detail view and persists them when the project is reopened.
+- Duplicate-contract errors keep the draft visible. Researcher views have no
+  editable inputs. Status/process controls are disabled during detail editing.
+- Automated tests cover attachment replacement, invalid attachments, independent
+  draft arrays, and preservation of ID, continuation kind, status and process.
+- Desktop and 390px inline-edit layouts were visually inspected; no horizontal
+  page overflow or browser console errors occurred in these flows.
+
+Basic-data pages are previews only. All changes and selected files stay in demo
+memory and reset on page reload; API and database behavior are unchanged.
