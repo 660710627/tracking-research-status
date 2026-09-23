@@ -32,7 +32,7 @@ export function ConfirmResearch({research,action,onCancel,onConfirm}:{research:R
     <p className="confirmation-project">{research.title}<small>{research.contract}</small></p>
     {action.type==='status'&&<dl className="change-summary"><div><dt>สถานะปัจจุบัน</dt><dd>{research.status}</dd></div><div><dt>สถานะใหม่</dt><dd>{action.status}</dd></div></dl>}
     {action.type==='process'&&<p>เปลี่ยนจากขั้นตอนที่ {research.process} เป็นขั้นตอนที่ {action.process}</p>}
-    <p className="confirmation-warning">{deleting?'งานวิจัยนี้จะถูกนำออกจากรายการข้อมูลตัวอย่าง การลบไม่สามารถเรียกคืนได้ในรอบสาธิตนี้':ending?'เมื่อยืนยันแล้ว จะไม่สามารถปรับสถานะหรือกระบวนการของโครงการนี้ได้อีก':action.type==='status'?'เมื่อยืนยันแล้ว จะไม่สามารถย้อนกลับไปสถานะก่อนหน้าได้':'เมื่อยืนยันแล้ว จะไม่สามารถย้อนกลับไปกระบวนการก่อนหน้าได้'}</p>
+    <p className="confirmation-warning">{deleting?'งานวิจัยนี้จะถูกนำออกจากรายการข้อมูลตัวอย่าง การลบไม่สามารถเรียกคืนได้ในรอบสาธิตนี้':ending?(action.type==='status'&&action.status==='ยุติโครงการ'?'เมื่อยืนยันแล้ว จะไม่สามารถปรับสถานะ กระบวนการ หรือ SDGs ของโครงการนี้ได้อีก':'เมื่อยืนยันแล้ว จะไม่สามารถปรับสถานะหรือกระบวนการของโครงการนี้ได้อีก'):action.type==='status'?'เมื่อยืนยันแล้ว จะไม่สามารถย้อนกลับไปสถานะก่อนหน้าได้':'เมื่อยืนยันแล้ว จะไม่สามารถย้อนกลับไปกระบวนการก่อนหน้าได้'}</p>
     <div className="form-actions"><button data-cancel className="secondary" onClick={onCancel}>ยกเลิก</button><button className={deleting||(action.type==='status'&&action.status==='ยุติโครงการ')?'danger':'primary'} onClick={onConfirm}>{deleting?'ยืนยันการลบ':action.type==='status'&&action.status==='ยุติโครงการ'?'ยืนยันยุติโครงการ':'ยืนยันการเปลี่ยนแปลง'}</button></div>
   </Modal>
 }

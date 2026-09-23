@@ -97,6 +97,28 @@
 .admin-preview caption{text-align:left;padding:0 14px 12px}
 .admin-preview .scenario{flex-shrink:0}
 .admin-page-actions{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0}
+.research-data{min-width:0;display:grid;gap:12px;align-content:start}
+.sdg-section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px}
+.sdg-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.sdg-heading h2{font-size:18px;margin:0}
+.sdg-heading button{white-space:nowrap;font-size:13px}
+.sdg-picker{border:0;padding:0;margin:0;min-width:0}
+.sdg-picker legend{font-size:14px;font-weight:600;padding:0}
+.sdg-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.sdg-option{display:flex;align-items:flex-start;gap:9px;padding:10px;border:1px solid var(--line);border-radius:6px;cursor:pointer;font-size:13px;line-height:1.5;background:#fff}
+.sdg-option.selected{border-color:var(--blue);background:#f1f6fe}
+.sdg-option input{width:18px;height:18px;min-height:18px;flex-shrink:0;padding:0;margin:2px 0 0;accent-color:var(--blue)}
+.sdg-option b{display:block;color:#214f93;font-size:12px;margin-bottom:3px}
+.sdg-selected{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0}
+.sdg-selected li{display:flex;gap:8px;align-items:baseline;padding:7px 10px;background:#edf3fb;border:1px solid #d8e3f3;border-radius:5px;font-size:13px;line-height:1.6}
+.sdg-selected b{color:#214f93;white-space:nowrap}
+.sdg-empty{font-size:14px;color:var(--muted);margin:0;padding:12px 0}
+.sdg-success{color:#24513a;background:#eaf4ee;padding:8px 10px;font-size:13px;border-radius:5px}
+.create-sdgs{border-top:1px solid var(--line);margin-top:18px;padding-top:14px}
+.create-sdgs h2{font-size:19px;margin-bottom:10px}
+.create-sdgs .sdg-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1050px){.create-sdgs .sdg-options{grid-template-columns:repeat(2,minmax(0,1fr))}.sdg-options{grid-template-columns:1fr}}
+@media(max-width:760px){.create-sdgs .sdg-options{grid-template-columns:1fr}.sdg-heading{flex-wrap:wrap}.research-data{min-width:0}.research-detail:has(.inline-editing) .research-tracking{grid-row:auto}}
 .admin-edit-preview:disabled{opacity:1;background:var(--blue);color:#fff;cursor:not-allowed}
 .toast{max-width:calc(100vw - 32px)}
 @media(max-width:1050px) and (min-width:761px){.research-detail{grid-template-columns:minmax(0,1fr) 310px}.research-sheet .facts-grid{grid-template-columns:1fr}}

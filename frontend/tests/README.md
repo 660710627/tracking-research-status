@@ -47,3 +47,19 @@ Inline detail editing verification:
 
 Basic-data pages are previews only. All changes and selected files stay in demo
 memory and reset on page reload; API and database behavior are unchanged.
+
+SDG demo verification:
+
+- Creating a project with no SDGs fails; selecting goals 4 and 9 saves both and
+  shows them when opening the new project.
+- Researcher can edit SDGs but still cannot edit general project data. Removing
+  all goals fails; Cancel restores the saved selection; Space toggles a checkbox
+  and Save returns focus to Edit SDGs with a success message.
+- Coordinator and administrator cannot edit SDGs after project termination.
+  Completed projects remain editable for SDGs. Unit tests cover all three roles
+  for both allowed and prohibited states, invalid identifiers, empty selections,
+  duplicate removal, and preservation of other fields.
+- Desktop and 390px mobile views were visually checked, with no horizontal page
+  overflow or console errors. The viewport override was reset after testing.
+- SDG data is synchronous in-memory demo data: no new network loading state or
+  production API/database enforcement is introduced.

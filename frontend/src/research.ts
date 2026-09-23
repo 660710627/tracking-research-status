@@ -1,8 +1,9 @@
 // In-memory demo behavior only. Production authorization belongs to the API/database.
+import { normalizeSdgs } from './sdgs.ts'
 export type Role = 'นักวิจัย' | 'ผู้ประสานงาน' | 'ผู้ดูแลระบบ'
 export const statuses = ['กำลังดำเนินการ', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)', 'กำลังดำเนินการ(ขยายเวลามากกว่า 2 ครั้ง)', 'โครงการเสร็จสิ้น', 'ยุติโครงการ'] as const
 export type ResearchDetails = { projectType:string; isSubsidized:boolean; budgetUnit:string; startDate:string; collaborators:string; fundingType:string; fund:string; thai:string; english:string; objectives:string[]; keywords:string[]; contractFile:File|null }
-export type Research = { id:number; title:string; contract:string; lead:string; unit:string; budget:number; status:string; process:number; kind:string; endDate:string } & Partial<ResearchDetails>
+export type Research = { id:number; title:string; contract:string; lead:string; unit:string; budget:number; status:string; process:number; kind:string; endDate:string; sdgs?:number[] } & Partial<ResearchDetails>
 export type ResearchFields = Pick<Research, 'title' | 'contract' | 'lead' | 'unit' | 'budget' | 'endDate'> & Partial<ResearchDetails>
 export type ResearchDraft = ResearchFields & ResearchDetails
 export function researchDraft(research:Research):ResearchDraft {
@@ -12,6 +13,14 @@ export function researchDraft(research:Research):ResearchDraft {
 export type ResearchAction = {type:'status'; status:string} | {type:'process'; process:number} | {type:'edit'; fields:ResearchFields} | {type:'delete'}
 export const canManageResearch = (role:Role) => role === 'ผู้ประสานงาน' || role === 'ผู้ดูแลระบบ'
 export const isTerminal = (status:string) => status === statuses[4] || status === statuses[5]
+export function changeResearchSdgs(items:Research[],id:number,role:Role,ids:number[]):Research[] {
+  if(!['นักวิจัย','ผู้ประสานงาน','ผู้ดูแลระบบ'].includes(role))throw new Error('คุณไม่มีสิทธิ์แก้ไข SDGs')
+  const research=items.find(item=>item.id===id)
+  if(!research)throw new Error('ไม่พบงานวิจัยที่เลือก')
+  if(research.status==='ยุติโครงการ')throw new Error('งานวิจัยยุติแล้ว ไม่สามารถแก้ไข SDGs ได้')
+  const sdgs=normalizeSdgs(ids)
+  return items.map(item=>item.id===id?{...item,sdgs}:item)
+}
 export function nextStatuses(status:string) {
   const index = statuses.findIndex(value => value === status)
   return index < 0 || isTerminal(status) ? [] : statuses.slice(index + 1)
