@@ -8,10 +8,10 @@ test('researchers cannot edit, delete, change status or process', () => {
     assert.throws(() => changeResearch([item],101,'นักวิจัย',action), /ไม่มีสิทธิ์/)
   }
 })
-test('every status transition respects forward order and terminal locks', () => {
+test('every status can move to any other status including reopening terminal projects', () => {
   for (let from=0; from<6; from++) for (let to=0; to<6; to++) {
     const current={...item,status:statuses[from]}
-    if (from<4 && to>from) {
+    if (from!==to) {
       const [changed]=changeResearch([current],101,'ผู้ประสานงาน',{type:'status',status:statuses[to]})
       assert.equal(changed.status,statuses[to])
       assert.equal(changed.process,3)
@@ -34,10 +34,19 @@ test('delete removes only the selected project, including the final item', () =>
   assert.deepEqual(changeResearch([item],101,'ผู้ดูแลระบบ',{type:'delete'}),[])
   assert.throws(() => changeResearch([item],999,'ผู้ดูแลระบบ',{type:'delete'}),/ไม่พบ/)
 })
-test('process changes preserve status and stop at terminal projects or the final step', () => {
-  assert.equal(changeResearch([item],101,'ผู้ประสานงาน',{type:'process',process:4})[0].status,statuses[0])
-  for (const process of [2,3,5,9]) assert.throws(() => changeResearch([item],101,'ผู้ดูแลระบบ',{type:'process',process}))
-  for (const status of statuses.slice(4)) assert.throws(() => changeResearch([{...item,status}],101,'ผู้ดูแลระบบ',{type:'process',process:4}))
+test('process changes allow every distinct step at every status and reject invalid steps', () => {
+  for (const status of statuses) for (let from=1;from<=8;from++) for(let to=1;to<=8;to++) {
+    const current={...item,status,process:from}
+    if(from===to) assert.throws(()=>changeResearch([current],101,'ผู้ดูแลระบบ',{type:'process',process:to}))
+    else {
+      const [changed]=changeResearch([current],101,'ผู้ประสานงาน',{type:'process',process:to})
+      assert.equal(changed.process,to)
+      assert.equal(changed.status,status)
+      assert.equal(changed.id,item.id)
+      assert.equal(current.process,from)
+    }
+  }
+  for(const process of [0,-1,9,1.5,NaN,Infinity]) assert.throws(()=>changeResearch([item],101,'ผู้ดูแลระบบ',{type:'process',process}))
 })
 
 test('inline edit draft is independent and saves every displayed project detail', () => {

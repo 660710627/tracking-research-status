@@ -23,7 +23,7 @@ export function changeResearchSdgs(items:Research[],id:number,role:Role,ids:numb
 }
 export function nextStatuses(status:string) {
   const index = statuses.findIndex(value => value === status)
-  return index < 0 || isTerminal(status) ? [] : statuses.slice(index + 1)
+  return index < 0 ? [] : statuses.filter(value => value !== status)
 }
 export function changeResearch(items:Research[], id:number, role:Role, action:ResearchAction):Research[] {
   if (!canManageResearch(role)) throw new Error('คุณไม่มีสิทธิ์จัดการงานวิจัย')
@@ -32,10 +32,10 @@ export function changeResearch(items:Research[], id:number, role:Role, action:Re
   if (action.type === 'delete') return items.filter(item => item.id !== id)
   let updated = current
   if (action.type === 'status') {
-    if (!nextStatuses(current.status).some(status => status === action.status)) throw new Error('ไม่สามารถย้อนสถานะหรือเปลี่ยนสถานะโครงการที่สิ้นสุดแล้ว')
+    if (!nextStatuses(current.status).some(status => status === action.status)) throw new Error('เลือกสถานะใหม่ที่ถูกต้องและแตกต่างจากสถานะปัจจุบัน')
     updated = {...current, status:action.status}
   } else if (action.type === 'process') {
-    if (isTerminal(current.status) || action.process !== current.process + 1 || action.process > 8) throw new Error('ไม่สามารถปรับกระบวนการนี้ได้')
+    if (!Number.isInteger(action.process) || action.process < 1 || action.process > 8 || action.process === current.process) throw new Error('ไม่สามารถปรับกระบวนการนี้ได้')
     updated = {...current, process:action.process}
   } else {
     const {title, contract, lead, unit, budget, endDate} = action.fields
