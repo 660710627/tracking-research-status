@@ -1,7 +1,12 @@
+import { demoResearcher, visibleResearches, changeOwnAbstracts } from './researchVisibility'
+import ProjectMemberPage from './ProjectMemberPage'
+import type { ProjectMember } from './ProjectMemberPage'
+import CalendarInput from './CalendarInput'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { canManageResearch, changeResearch, changeResearchSdgs, isTerminal, researchDraft, statuses } from './research'
 import type { Research, ResearchAction, ResearchDraft, Role } from './research'
 import { ConfirmResearch, StatusPanel } from './ResearchControls'
+import { researchStatusClass } from './researchStatusStyle'
 import ResearchSheet from './ResearchSheet'
 import SdgPicker from './SdgPicker'
 import SdgSection from './SdgSection'
@@ -17,7 +22,7 @@ import type { AcademicTitle, AcademicTitleDraft } from './academicTitlesDemo'
 type View = 'list' | 'detail' | 'create' | AdminView
 const processSteps = ['สัญญาโครงการ','บันทึกข้อตกลง','เปิดบัญชีธนาคาร','การเบิกจ่ายเงิน','การจัดสรรค่าธรรมเนียม','การติดตามส่งรายงาน','รายงานสรุปการใช้เงิน','การปิดบัญชีธนาคาร']
 const seed: Research[] = [
-  {id:101,title:'การพัฒนาวัสดุดูดซับจากเส้นใยธรรมชาติ',contract:'SURDI-2569-014',lead:'รศ. ดร. กานดา วัฒนศิลป์',unit:'คณะวิทยาศาสตร์',budget:480000,status:'กำลังดำเนินการ',process:5,kind:'โครงการหลัก',endDate:'30 ก.ย. 2570'},
+  {id:101,leader:{academicTitle:'รศ. ดร.',name:demoResearcher.name,email:demoResearcher.email,contribution:100},title:'การพัฒนาวัสดุดูดซับจากเส้นใยธรรมชาติ',contract:'SURDI-2569-014',lead:'รศ. ดร. กานดา วัฒนศิลป์',unit:'คณะวิทยาศาสตร์',budget:480000,status:'กำลังดำเนินการ',process:5,kind:'โครงการหลัก',endDate:'30 ก.ย. 2570'},
   {id:102,title:'ระบบเฝ้าระวังคุณภาพน้ำด้วยปัญญาประดิษฐ์',contract:'NRCT-2569-088',lead:'ผศ. ดร. นรินทร์ ชูใจ',unit:'คณะวิศวกรรมศาสตร์',budget:1250000,status:statuses[1],process:6,kind:'โครงการต่อเนื่อง',endDate:'31 มี.ค. 2571'},
   {id:103,title:'ทุนทางวัฒนธรรมกับเศรษฐกิจสร้างสรรค์ชุมชน',contract:'FF-2569-031',lead:'ดร. พิมพ์ชนก ศรีสุข',unit:'คณะอักษรศาสตร์',budget:320000,status:'กำลังดำเนินการ',process:3,kind:'โครงการหลัก',endDate:'30 มิ.ย. 2570'},
   {id:104,title:'ฐานข้อมูลจิตรกรรมฝาผนังภาคกลาง',contract:'SURDI-2568-042',lead:'รศ. ดร. วิภา มณีรัตน์',unit:'คณะโบราณคดี',budget:275000,status:'โครงการเสร็จสิ้น',process:8,kind:'โครงการหลัก',endDate:'31 ธ.ค. 2569'},
@@ -48,9 +53,9 @@ function Login({onLogin}:{onLogin:(role:Role)=>void}) {
       <label className="login-field" htmlFor="demo-password">รหัสผ่าน</label>
       <div className="login-password"><input id="demo-password" name="demo-password" type={showPassword?'text':'password'} autoComplete="off" required value={password} onChange={event=>{setPassword(event.target.value);setLoginError('')}} aria-describedby="demo-login-hint" placeholder="กรอกรหัสผ่าน"/><button type="button" aria-controls="demo-password" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword?'ซ่อน':'แสดง'}รหัสผ่าน</button></div>
       <fieldset className="role-picker"><legend>บทบาทสำหรับสาธิต</legend>
-        {(['นักวิจัย','ผู้ประสานงาน','ผู้ดูแลระบบ'] as Role[]).map(item=><label key={item} className={role===item?'role-option selected':'role-option'}><input type="radio" name="role" checked={role===item} onChange={()=>setRole(item)}/><span><b>{item}</b><small>{item==='นักวิจัย'?'ดูงานวิจัย ติดตามความคืบหน้า และแก้ไข SDGs':item==='ผู้ดูแลระบบ'?'ดูบัญชีและข้อมูลพื้นฐานได้':'จัดการและติดตามงานวิจัย'}</small></span></label>)}
+        {(['นักวิจัย','ผู้ประสานงาน','ผู้ดูแลระบบ'] as Role[]).map(item=><label key={item} className={role===item?'role-option selected':'role-option'}><input type="radio" name="role" checked={role===item} onChange={()=>setRole(item)}/><span><b>{item}</b><small>{item==='นักวิจัย'?'ดูเฉพาะงานวิจัยของตนเอง และแก้ไข SDGs':item==='ผู้ดูแลระบบ'?'ดูบัญชีและข้อมูลพื้นฐานได้':'จัดการและติดตามงานวิจัย'}</small></span></label>)}
       </fieldset>
-      <button className="primary full" type="submit">เข้าสู่ระบบ</button>
+      <p className="demo-note">{role==='นักวิจัย'&&`บัญชีสาธิต: ${demoResearcher.name} (${demoResearcher.email})`}</p><button className="primary full" type="submit">เข้าสู่ระบบ</button>
       </form>
       <p className="demo-note">ไม่มีการเชื่อมต่อ SSO หรือบันทึกข้อมูลจริง</p>
     </section>
@@ -87,7 +92,7 @@ function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items
       <div className="register-head"><div><h2>รายการโครงการ</h2><p>พบ {filtered.length} จาก {items.length} รายการ</p></div>{canManage&&<button className="primary" onClick={onCreate}>＋ เพิ่มงานวิจัย</button>}</div>
       <div className="filters"><label><span className="sr-only">ค้นหางานวิจัย</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ค้นหาชื่อโครงการหรือเลขสัญญา…"/></label><label><span className="sr-only">กรองสถานะ</span><select value={status} onChange={e=>setStatus(e.target.value)}><option>ทั้งหมด</option>{statuses.map(item=><option key={item}>{item}</option>)}</select></label><label className="scenario"><span>สถานะสาธิต</span><select value={scenario} onChange={e=>setScenario(e.target.value as typeof scenario)}><option value="normal">ข้อมูลพร้อม</option><option value="loading">กำลังโหลด</option><option value="error">เกิดข้อผิดพลาด</option><option value="empty">ยังไม่มีข้อมูล</option></select></label></div>
       {scenario==='loading'?<div className="state-panel" role="status"><span className="loader"/><b>กำลังโหลดทะเบียนงานวิจัย…</b><p>ระบบกำลังเตรียมข้อมูลล่าสุด</p></div>:scenario==='error'?<div className="state-panel error" role="alert"><b>ไม่สามารถโหลดข้อมูลได้</b><p>การเชื่อมต่อขัดข้อง กรุณาลองอีกครั้ง</p><button className="secondary" onClick={()=>setScenario('normal')}>ลองอีกครั้ง</button></div>:scenario==='empty'?<div className="empty-state"><b>ยังไม่มีงานวิจัยในระบบ</b><p>{canManage?'เริ่มต้นทะเบียนด้วยการเพิ่มโครงการแรก':'เมื่อผู้ประสานงานเพิ่มโครงการแล้ว รายการจะแสดงที่นี่'}</p>{canManage&&<button className="primary" onClick={onCreate}>เพิ่มงานวิจัย</button>}</div>:filtered.length===0?<div className="empty-state"><b>ไม่พบโครงการที่ตรงกับคำค้น</b><p>ลองเปลี่ยนคำค้นหรือล้างตัวกรอง</p><button onClick={()=>{setQuery('');setStatus('ทั้งหมด')}}>ล้างตัวกรอง</button></div>:
-      <div className="table-wrap"><table><thead><tr><th>เลขสัญญา</th><th>โครงการ / ผู้รับผิดชอบ</th><th>สถานะ</th><th>กระบวนการปัจจุบัน</th><th>สิ้นสุด</th><th><span className="sr-only">เปิด</span></th></tr></thead><tbody>{filtered.map(r=><tr key={r.id}><td><b className="contract">{r.contract}</b><small>{r.kind}</small></td><td><button className="title-link" onClick={()=>onOpen(r.id)}>{r.title}</button><small>{r.lead} · {r.unit}</small></td><td><span className={isTerminal(r.status)?'status done':r.status.includes('ขยาย')?'status warn':'status'}>{r.status}</span></td><td><div className="progress-mini"><span style={{width:String(r.process/8*100)+'%'}}/></div><small>{r.process}/8 · {processSteps[r.process-1]}</small></td><td>{r.endDate}</td><td><button className="row-action" aria-label={'เปิด '+r.title} onClick={()=>onOpen(r.id)}>→</button></td></tr>)}</tbody></table></div>}
+      <div className="table-wrap"><table><thead><tr><th>เลขสัญญา</th><th>โครงการ / ผู้รับผิดชอบ</th><th>สถานะ</th><th>กระบวนการปัจจุบัน</th><th>สิ้นสุด</th><th><span className="sr-only">เปิด</span></th></tr></thead><tbody>{filtered.map(r=><tr key={r.id}><td><b className="contract">{r.contract}</b><small>{r.kind}</small></td><td><button className="title-link" onClick={()=>onOpen(r.id)}>{r.title}</button><small>{r.lead} · {r.unit}</small></td><td><span className={researchStatusClass(r.status)}>{r.status}</span></td><td><div className="progress-mini"><span style={{width:String(r.process/8*100)+'%'}}/></div><small>{r.process}/8 · {processSteps[r.process-1]}</small></td><td>{r.endDate}</td><td><button className="row-action" aria-label={'เปิด '+r.title} onClick={()=>onOpen(r.id)}>→</button></td></tr>)}</tbody></table></div>}
     </section>
   </main>
 }
@@ -99,7 +104,7 @@ const detailSamples: Record<number, { fundingType:string; fund:string; start:str
   104: {fundingType:'ภายใน',fund:'ทุนอุดหนุนการวิจัย มหาวิทยาลัยศิลปากร',start:'1 ม.ค. 2568',collaborators:'ผศ. ดร. อรุณ อนุรักษ์',thai:'รวบรวมและจัดหมวดหมู่ข้อมูลจิตรกรรมฝาผนังในพื้นที่ภาคกลาง โดยบันทึกภาพ รายละเอียดแหล่งที่ตั้ง และลักษณะทางศิลปกรรม จัดทำต้นแบบฐานข้อมูลเพื่อสนับสนุนการศึกษาและการอนุรักษ์มรดกทางวัฒนธรรม',english:'This project documents and classifies mural paintings in central Thailand. Images, locations, and artistic characteristics are organized into a prototype database for research and cultural heritage conservation.',objectives:['สำรวจและบันทึกจิตรกรรมฝาผนัง','จัดหมวดหมู่ข้อมูลทางศิลปกรรม','พัฒนาฐานข้อมูลสำหรับการศึกษาและอนุรักษ์'],keywords:['จิตรกรรมฝาผนัง','ฐานข้อมูล','มรดกวัฒนธรรม']},
 }
 
-function Detail({research,onBack,onChange,onSaveSdgs,canManage}:{canManage:boolean;research:Research;onBack:()=>void;onChange:(action:ResearchAction)=>string|null;onSaveSdgs:(ids:number[])=>string|null}) {
+function Detail({research,onBack,onChange,onSaveSdgs,onSaveAbstracts,canManage}:{onSaveAbstracts:(patch:{thai:string;english:string})=>string|null;canManage:boolean;research:Research;onBack:()=>void;onChange:(action:ResearchAction)=>string|null;onSaveSdgs:(ids:number[])=>string|null}) {
   const [pending,setPending]=useState<Exclude<ResearchAction,{type:'edit'}>|null>(null)
   const [draft,setDraft]=useState<ResearchDraft|null>(null)
   const editing=draft!==null
@@ -116,33 +121,36 @@ function Detail({research,onBack,onChange,onSaveSdgs,canManage}:{canManage:boole
   const cancelEdit=()=>{setDraft(null);setError('')}
   const saveEdit=()=>{
     if(!draft)return
-    const message=onChange({type:'edit',fields:draft})
+    const message=canManage?onChange({type:'edit',fields:draft}):onSaveAbstracts({thai:draft.thai,english:draft.english})
     setError(message??'')
     if(!message)setDraft(null)
   }
   const [targetProcess,setTargetProcess]=useState('')
   return <main className="page"><button className="back-link" disabled={editing} onClick={onBack}>← กลับทะเบียนงานวิจัย</button><Header title={research.title} subtitle={research.contract+' · '+research.kind}/>
+    {!canManage&&<div className="research-toolbar">{editing?<><span className="editing-label" role="status">กำลังแก้ไขเฉพาะบทคัดย่อไทยและอังกฤษ</span><button className="secondary" onClick={cancelEdit}>ยกเลิกการแก้ไข</button><button className="primary" type="submit" form="research-edit-form">บันทึกบทคัดย่อ</button></>:<button ref={editButton} className="secondary" onClick={()=>{setDraft(researchDraft(research));setError('')}}>แก้ไขข้อมูล</button>}</div>}
     {canManage&&<div className="research-toolbar">{editing?<><span className="editing-label" role="status">กำลังแก้ไขข้อมูล</span><button className="secondary" onClick={cancelEdit}>ยกเลิกการแก้ไข</button><button className="primary" type="submit" form="research-edit-form">บันทึกการแก้ไข</button></>:<><button ref={editButton} className="secondary" onClick={()=>{setDraft(researchDraft(research));setError('')}}>แก้ไขงานวิจัย</button><button className="danger-outline" onClick={()=>setPending({type:'delete'})}>ลบงานวิจัย</button></>}</div>}
     {error&&<p ref={errorMessage} tabIndex={-1} className="notice" role="alert">{error}</p>}
     {pending&&<ConfirmResearch research={research} action={pending} onCancel={()=>setPending(null)} onConfirm={()=>{const message=onChange(pending);setPending(null);setError(message??'')}}/>}
-    <div className="detail-grid research-detail"><div className="research-data"><ResearchSheet research={research} fields={fields} editing={editing} onFields={setDraft} onSave={saveEdit} onCancel={cancelEdit}/><SdgSection key={research.status} value={research.sdgs??[]} disabledReason={research.status==='ยุติโครงการ'?'งานวิจัยยุติแล้ว ไม่สามารถแก้ไข SDGs ได้':editing?'บันทึกหรือยกเลิกการแก้ไขข้อมูลโครงการก่อนแก้ไข SDGs':undefined} onSave={onSaveSdgs}/></div>
+    <div className="detail-grid research-detail"><div className="research-data"><ResearchSheet research={research} fields={fields} editing={editing} abstractsOnly={!canManage} onFields={setDraft} onSave={saveEdit} onCancel={cancelEdit}/><SdgSection key={research.status} value={research.sdgs??[]} disabledReason={research.status==='ยุติโครงการ'?'งานวิจัยยุติแล้ว ไม่สามารถแก้ไข SDGs ได้':editing?'บันทึกหรือยกเลิกการแก้ไขข้อมูลโครงการก่อนแก้ไข SDGs':undefined} onSave={onSaveSdgs}/></div>
       <aside className="research-tracking">{editing&&<p className="edit-progress-note">บันทึกหรือยกเลิกการแก้ไขข้อมูลก่อนปรับสถานะและกระบวนการ</p>}<fieldset className="tracking-controls" disabled={editing}><StatusPanel key={research.status} research={research} canManage={canManage} onRequest={action=>{if(action.type!=='edit')setPending(action)}}/>
       <section className="journey"><div className="journey-head"><div><span className="journey-count">ขั้นตอน {research.process} จาก 8</span><h2>กระบวนการงานวิจัย</h2></div></div><ol>{processSteps.map((item,index)=><li key={item} className={index+1<research.process?'complete':index+1===research.process?'current':''}><span>{index+1<research.process?'✓':String(index+1).padStart(2,'0')}</span><div><b>{item}</b>{index+1===research.process&&<small>ขั้นตอนปัจจุบัน</small>}</div></li>)}</ol>{canManage&&<div className="journey-actions"><label className="status-select">เปลี่ยนกระบวนการเป็น<select value={targetProcess} onChange={event=>setTargetProcess(event.target.value)}><option value="">เลือกกระบวนการใหม่</option>{processSteps.map((step,index)=>index+1!==research.process&&<option key={step} value={index+1}>{index+1}. {step}</option>)}</select></label><button className="primary" disabled={!targetProcess||Number(targetProcess)===research.process} onClick={()=>setPending({type:'process',process:Number(targetProcess)})}>ปรับกระบวนการ</button><p className="helper-text">เลือกขั้นตอนใดก็ได้ ทั้งย้อนกลับและเดินหน้า</p></div>}</section></fieldset></aside>
     </div></main>
 }
 
-function Create({onCancel,onSave}:{onCancel:()=>void;onSave:(r:Research)=>void}) {
+function Create({onCancel,onSave,titles}:{titles:AcademicTitle[];onCancel:()=>void;onSave:(r:Research)=>void}) {
   const [thai,setThai]=useState(''); const [english,setEnglish]=useState('')
   const [objectives,setObjectives]=useState(''); const [keywords,setKeywords]=useState('')
-  const [title,setTitle]=useState(''); const [contract,setContract]=useState(''); const [lead,setLead]=useState(''); const [error,setError]=useState('')
+  const [title,setTitle]=useState(''); const [contract,setContract]=useState(''); const [leader,setLeader]=useState<ProjectMember>(); const [members,setMembers]=useState<ProjectMember[]>([]); const [memberPage,setMemberPage]=useState<'lead'|number|null>(null); const lead=leader?`${leader.academicTitle} ${leader.name}`:''; const [error,setError]=useState('')
+  const [startDate,setStartDate]=useState('1 ต.ค. 2569'); const [endDate,setEndDate]=useState('30 ก.ย. 2571')
   const [sdgs,setSdgs]=useState<number[]>([])
   const [sdgError,setSdgError]=useState('')
   const sdgArea=useRef<HTMLDivElement>(null)
-  const save=()=>{try{normalizeSdgs(sdgs);setSdgError('')}catch(error){setSdgError(error instanceof Error?error.message:'เลือก SDGs ให้ถูกต้อง');sdgArea.current?.focus();return}if(!title.trim()||!contract.trim()||!lead.trim()){setError('กรอกชื่อโครงการ เลขสัญญา และหัวหน้าโครงการให้ครบ');return}onSave({id:Date.now(),sdgs:normalizeSdgs(sdgs),title,contract,lead,thai:thai.trim(),english:english.trim(),objectives:objectives.split(/\r?\n/).map(text=>text.trim()).filter(Boolean),keywords:keywords.split(/[,\n]/).map(text=>text.trim()).filter(Boolean),unit:'คณะวิทยาศาสตร์',budget:350000,status:'กำลังดำเนินการ',process:1,kind:'โครงการหลัก',endDate:'30 ก.ย. 2571'})}
+  const save=()=>{try{normalizeSdgs(sdgs);setSdgError('')}catch(error){setSdgError(error instanceof Error?error.message:'เลือก SDGs ให้ถูกต้อง');sdgArea.current?.focus();return}if(!title.trim()||!contract.trim()||!lead.trim()){setError('กรอกชื่อโครงการ เลขสัญญา และหัวหน้าโครงการให้ครบ');return}onSave({id:Date.now(),sdgs:normalizeSdgs(sdgs),title,contract,lead,leader,coResearchers:members,collaborators:members.map(person=>`${person.academicTitle} ${person.name}`).join('; '),thai:thai.trim(),english:english.trim(),objectives:objectives.split(/\r?\n/).map(text=>text.trim()).filter(Boolean),keywords:keywords.split(/[,\n]/).map(text=>text.trim()).filter(Boolean),unit:'คณะวิทยาศาสตร์',budget:350000,status:'กำลังดำเนินการ',process:1,kind:'โครงการหลัก',startDate,endDate})}
+  if(memberPage!==null)return <ProjectMemberPage heading={memberPage==='lead'?'ข้อมูลหัวหน้าโครงการ':'ข้อมูลผู้ร่วมโครงการ'} initial={memberPage==='lead'?leader:members[memberPage]} titles={titles} onCancel={()=>setMemberPage(null)} onSave={person=>{if(memberPage==='lead')setLeader(person);else setMembers(current=>memberPage===current.length?[...current,person]:current.map((item,index)=>index===memberPage?person:item));setMemberPage(null)}}/>
   return <main className="page"><button className="back-link" onClick={onCancel}>← กลับทะเบียนงานวิจัย</button><Header title="เพิ่มงานวิจัย" subtitle="บันทึกข้อมูลสำคัญสำหรับเริ่มติดตามโครงการ"/>{error&&<div className="notice" role="alert">{error}</div>}<section className="form-sheet">
     <FormHeading number="01" title="ข้อมูลโครงการ" text="ชื่อและประเภทของโครงการ"/><div className="form-grid"><label className="wide">ชื่อโครงการ *<input value={title} onChange={e=>setTitle(e.target.value)}/></label><label>ประเภทโครงการ<select><option>งานวิจัย</option><option>บริการวิชาการ</option></select></label><label>ลักษณะโครงการ<select><option>โครงการในงบประมาณ</option><option>โครงการต่อเนื่อง</option></select></label></div>
-    <FormHeading number="02" title="บุคลากรและสัญญา" text="ผู้รับผิดชอบและเอกสารอ้างอิง"/><div className="form-grid"><label>หัวหน้าโครงการ *<input value={lead} onChange={e=>setLead(e.target.value)}/></label><label>ผู้ร่วมโครงการ<input defaultValue="ดร. ปราณี ใจดี"/></label><label>เลขที่สัญญาทุน *<input value={contract} onChange={e=>setContract(e.target.value)}/></label><label>ไฟล์สัญญา PDF<input type="file" accept=".pdf"/></label></div>
-    <FormHeading number="03" title="ระยะเวลาและงบประมาณ" text="ข้อมูลสำหรับการติดตาม"/><div className="form-grid"><label>วันเริ่มต้น<input defaultValue="01/10/2569"/></label><label>วันสิ้นสุด<input defaultValue="30/09/2571"/></label><label>งบประมาณ (บาท)<input defaultValue="350,000"/></label><label>หน่วยงาน<select><option>คณะวิทยาศาสตร์</option><option>คณะวิศวกรรมศาสตร์</option></select></label></div>
+    <FormHeading number="02" title="บุคลากรและสัญญา" text="ผู้รับผิดชอบและเอกสารอ้างอิง"/><div className="form-grid"><div className="member-summary"><b>หัวหน้าโครงการ *</b>{leader?<section className="leader-card" aria-label="ข้อมูลหัวหน้าโครงการที่เพิ่มแล้ว"><header className="leader-card-header"><span className="leader-card-avatar" aria-hidden="true">{leader.name.charAt(0)}</span><div className="leader-card-name"><span>{leader.academicTitle}</span><strong>{leader.name}</strong></div><button type="button" className="leader-edit" onClick={()=>setMemberPage('lead')} aria-label="แก้ไขหัวหน้าโครงการ">แก้ไข</button></header><dl className="leader-card-facts"><div><dt>อีเมล</dt><dd>{leader.email}</dd></div><div className="leader-share"><dt>สัดส่วนของโปรเจค</dt><dd>{leader.contribution}<span>%</span></dd></div></dl></section>:<button type="button" className="member-add" onClick={()=>setMemberPage('lead')}><span className="member-add-icon" aria-hidden="true">+</span><span className="member-add-copy"><strong>เพิ่มหัวหน้าโครงการ</strong><small>ระบุผู้รับผิดชอบหลัก 1 คน</small></span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m9 5 7 7-7 7"/></svg></button>}</div><div className="member-summary"><b>ผู้ร่วมโครงการ</b>{members.map((person,index)=><div key={index}><p>{person.academicTitle} {person.name}<br/>{person.email}<br/>สัดส่วน {person.contribution}%</p><button className="secondary" onClick={()=>setMemberPage(index)}>แก้ไข {person.name}</button><button className="secondary" onClick={()=>setMembers(current=>current.filter((_,i)=>i!==index))}>นำ {person.name} ออก</button></div>)}<button type="button" className="member-add" onClick={()=>setMemberPage(members.length)}><span className="member-add-icon" aria-hidden="true">+</span><span className="member-add-copy"><strong>เพิ่มผู้ร่วมโครงการ</strong><small>เพิ่มบุคลากรได้มากกว่า 1 คน</small></span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m9 5 7 7-7 7"/></svg></button></div><label style={{gridColumn:1}}>เลขที่สัญญาทุน *<input value={contract} onChange={e=>setContract(e.target.value)}/></label><label>ไฟล์สัญญา PDF<input type="file" accept=".pdf"/></label></div>
+    <FormHeading number="03" title="ระยะเวลาและงบประมาณ" text="ข้อมูลสำหรับการติดตาม"/><div className="form-grid"><label>วันเริ่มต้น<CalendarInput label="วันเริ่มต้น" value={startDate} onChange={setStartDate}/></label><label>วันสิ้นสุด<CalendarInput label="วันสิ้นสุด" value={endDate} onChange={setEndDate} required/></label><label>งบประมาณ (บาท)<input defaultValue="350,000"/></label><label>หน่วยงาน<select><option>คณะวิทยาศาสตร์</option><option>คณะวิศวกรรมศาสตร์</option></select></label></div>
     <FormHeading number="04" title="รายละเอียดงานวิจัย" text="บทคัดย่อ วัตถุประสงค์ และคำสืบค้น"/>
     <div className="create-research-texts">
       <label>บทคัดย่อภาษาไทย<textarea rows={5} value={thai} onChange={e=>setThai(e.target.value)}/></label>
@@ -168,7 +176,8 @@ export default function App(){
   const [toast,setToast]=useState('')
   if(!role)return <Login onLogin={nextRole=>{setRole(nextRole);setView('list');setToast('')}}/>
   const canManage=canManageResearch(role)
-  const research=researches.find(item=>item.id===selected)
+  const accessibleResearches=visibleResearches(researches,role,demoResearcher.email)
+  const research=accessibleResearches.find(item=>item.id===selected)
   const change=(action:ResearchAction):string|null=>{
     try {
       const next=changeResearch(researches,selected,role,action)
@@ -179,6 +188,7 @@ export default function App(){
     } catch(error) { return error instanceof Error?error.message:'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองอีกครั้ง' }
   }
   const saveSdgs=(ids:number[]):string|null=>{
+    if(!research)return 'ไม่มีสิทธิ์เข้าถึงงานวิจัยนี้'
     try{setResearches(changeResearchSdgs(researches,selected,role,ids));return null}
     catch(error){return error instanceof Error?error.message:'ไม่สามารถบันทึก SDGs ได้'}
   }
@@ -217,9 +227,10 @@ export default function App(){
   const navigate=(next:View)=>{setView(next);setToast('')}
   return <div className="app-shell"><a className="skip-link" href="#main">ข้ามไปยังเนื้อหา</a><Sidebar role={role} view={view} onView={navigate} onLogout={()=>setRole(null)}/><div id="main" tabIndex={-1} className="content">
     {toast&&<div className="toast" role="status"><b>สำเร็จ</b>{toast}<button aria-label="ปิดข้อความ" onClick={()=>setToast('')}>×</button></div>}
-    {view==='list'&&<ResearchList canManage={canManage} items={researches} onOpen={id=>{setSelected(id);navigate('detail')}} onCreate={()=>navigate('create')}/>}
-    {view==='detail'&&research&&<Detail key={research.id} canManage={canManage} research={research} onBack={()=>navigate('list')} onChange={change} onSaveSdgs={saveSdgs}/>}
-    {canManage&&view==='create'&&<Create onCancel={()=>navigate('list')} onSave={r=>{setResearches(items=>[r,...items]);setToast('เพิ่มงานวิจัยตัวอย่างแล้ว');setView('list')}}/>}
+    {view==='list'&&<ResearchList canManage={canManage} items={accessibleResearches} onOpen={id=>{if(accessibleResearches.some(item=>item.id===id)){setSelected(id);navigate('detail')}}} onCreate={()=>navigate('create')}/>}
+    {view==='detail'&&!research&&<main className="page"><p role="alert">ไม่พบงานวิจัยหรือคุณไม่มีสิทธิ์เข้าถึง</p><button className="secondary" onClick={()=>navigate('list')}>กลับรายการงานวิจัย</button></main>}
+    {view==='detail'&&research&&<Detail key={research.id} canManage={canManage} research={research} onBack={()=>navigate('list')} onChange={change} onSaveSdgs={saveSdgs} onSaveAbstracts={patch=>{try{setResearches(changeOwnAbstracts(researches,selected,role,demoResearcher.email,patch));return null}catch(error){return error instanceof Error?error.message:'บันทึกไม่สำเร็จ'}}}/>}
+    {canManage&&view==='create'&&<Create titles={academicTitles} onCancel={()=>navigate('list')} onSave={r=>{setResearches(items=>[r,...items]);setToast('เพิ่มงานวิจัยตัวอย่างแล้ว');setView('list')}}/>}
     {role==='ผู้ดูแลระบบ'&&adminModules.some(module=>module.id===view)&&<AdminPreview key={view} view={view as AdminView} accounts={accounts} onDecide={decide} onSaveAccount={saveAccount} onDeleteAccount={removeAccount} titles={academicTitles} onSaveTitle={saveAcademicTitle} onDeleteTitle={removeAcademicTitle}/>}
   </div></div>
 }

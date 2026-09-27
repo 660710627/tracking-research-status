@@ -1,9 +1,10 @@
+import type { ProjectMember } from './ProjectMemberPage'
 // In-memory demo behavior only. Production authorization belongs to the API/database.
 import { normalizeSdgs } from './sdgs.ts'
 export type Role = 'นักวิจัย' | 'ผู้ประสานงาน' | 'ผู้ดูแลระบบ'
 export const statuses = ['กำลังดำเนินการ', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)', 'กำลังดำเนินการ(ขยายเวลามากกว่า 2 ครั้ง)', 'โครงการเสร็จสิ้น', 'ยุติโครงการ'] as const
 export type ResearchDetails = { projectType:string; isSubsidized:boolean; budgetUnit:string; startDate:string; collaborators:string; fundingType:string; fund:string; thai:string; english:string; objectives:string[]; keywords:string[]; contractFile:File|null }
-export type Research = { id:number; title:string; contract:string; lead:string; unit:string; budget:number; status:string; process:number; kind:string; endDate:string; sdgs?:number[] } & Partial<ResearchDetails>
+export type Research = { id:number; title:string; contract:string; lead:string; unit:string; budget:number; status:string; process:number; kind:string; endDate:string; sdgs?:number[]; leader?:ProjectMember; coResearchers?:ProjectMember[] } & Partial<ResearchDetails>
 export type ResearchFields = Pick<Research, 'title' | 'contract' | 'lead' | 'unit' | 'budget' | 'endDate'> & Partial<ResearchDetails>
 export type ResearchDraft = ResearchFields & ResearchDetails
 export function researchDraft(research:Research):ResearchDraft {

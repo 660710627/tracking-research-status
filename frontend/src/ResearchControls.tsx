@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { isTerminal, nextStatuses } from './research'
+import { nextStatuses } from './research'
+import { researchStatusClass } from './researchStatusStyle'
 import type { Research, ResearchAction } from './research'
 
 export function Modal({title, children, onCancel, className}:{title:string; children:ReactNode; onCancel:()=>void; className?:string}) {
@@ -39,10 +40,9 @@ export function ConfirmResearch({research,action,onCancel,onConfirm}:{research:R
 export function StatusPanel({research,canManage,onRequest}:{research:Research;canManage:boolean;onRequest:(action:ResearchAction)=>void}) {
   const [target,setTarget]=useState('')
   const options=nextStatuses(research.status).filter(status=>status!=='ยุติโครงการ')
-  const terminal=isTerminal(research.status)
   return <section className="status-panel" aria-labelledby="research-status-heading">
     <h2 id="research-status-heading">สถานะงานวิจัย</h2>
-    <p className="status-caption">สถานะปัจจุบัน</p><p className={terminal?'status done':'status'}>{research.status}</p>
+    <p className="status-caption">สถานะปัจจุบัน</p><p className={researchStatusClass(research.status)}>{research.status}</p>
     {canManage?<><label className="status-select">เปลี่ยนสถานะเป็น<select value={target} onChange={event=>setTarget(event.target.value)} aria-describedby="status-help"><option value="">เลือกสถานะใหม่</option>{options.map(status=><option key={status}>{status}</option>)}</select></label><p id="status-help" className="helper-text">เลือกย้อนกลับหรือเดินหน้าได้ รวมถึงโครงการที่เสร็จสิ้นหรือยุติแล้ว</p><div className="status-actions"><button className="primary" disabled={!options.some(status=>status===target)} onClick={()=>onRequest({type:'status',status:target})}>ปรับสถานะ</button>{research.status!=='ยุติโครงการ'&&<button className="danger-outline" onClick={()=>onRequest({type:'status',status:'ยุติโครงการ'})}>ยุติโครงการ</button>}</div></>:<p className="helper-text">ผู้ประสานงานหรือผู้ดูแลระบบเป็นผู้ปรับสถานะโครงการ</p>}
   </section>
 }
