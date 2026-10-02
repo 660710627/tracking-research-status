@@ -1,8 +1,14 @@
 import { demoResearcher, visibleResearches, changeOwnAbstracts } from './researchVisibility'
+import { emptyResearchFilters, filterResearches } from './researchFilters'
+import ResponsibleSearch from './ResponsibleSearch'
+import { paginate } from './pagination'
+import { researchColumns, sortResearches } from './researchSort'
+import type { ResearchSort, ResearchSortKey } from './researchSort'
 import ProjectMemberPage from './ProjectMemberPage'
 import type { ProjectMember } from './ProjectMemberPage'
 import CalendarInput from './CalendarInput'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { IconFileDescription, IconFileSpreadsheet, IconPlus, IconCircleCheck, IconUser, IconBook, IconInfoCircle, IconBuilding, IconReport, IconChevronDown, IconChevronUp, IconLogout, IconClock, IconCoin, IconCheck, IconArchive, IconSearch } from '@tabler/icons-react'
 import { canManageResearch, changeResearch, changeResearchSdgs, isTerminal, researchDraft, statuses } from './research'
 import type { Research, ResearchAction, ResearchDraft, Role } from './research'
 import { ConfirmResearch, StatusPanel } from './ResearchControls'
@@ -19,7 +25,7 @@ import type { AccountDecision, AccountDraft, DemoAccount } from './approvalDemo'
 import { academicTitlesDemo, addAcademicTitle, deleteAcademicTitle, updateAcademicTitle } from './academicTitlesDemo'
 import type { AcademicTitle, AcademicTitleDraft } from './academicTitlesDemo'
 
-type View = 'list' | 'detail' | 'create' | AdminView
+type View = 'overview' | 'list' | 'detail' | 'create' | AdminView
 const processSteps = ['สัญญาโครงการ','บันทึกข้อตกลง','เปิดบัญชีธนาคาร','การเบิกจ่ายเงิน','การจัดสรรค่าธรรมเนียม','การติดตามส่งรายงาน','รายงานสรุปการใช้เงิน','การปิดบัญชีธนาคาร']
 const seed: Research[] = [
   {id:101,leader:{academicTitle:'รศ. ดร.',name:demoResearcher.name,email:demoResearcher.email,contribution:100},title:'การพัฒนาวัสดุดูดซับจากเส้นใยธรรมชาติ',contract:'SURDI-2569-014',lead:'รศ. ดร. กานดา วัฒนศิลป์',unit:'คณะวิทยาศาสตร์',budget:480000,status:'กำลังดำเนินการ',process:5,kind:'โครงการหลัก',endDate:'30 ก.ย. 2570'},
@@ -64,14 +70,17 @@ function Login({onLogin}:{onLogin:(role:Role)=>void}) {
 
 function Sidebar({role,view,onView,onLogout}:{role:Role;view:View;onView:(v:View)=>void;onLogout:()=>void}) {
   const [adminExpanded,setAdminExpanded]=useState(true)
+  const menuIcons=[IconCircleCheck,IconUser,IconBook,IconInfoCircle,IconBuilding,IconReport]
   return <aside className="sidebar">
     <div className="brand"><img className="brand-logo" src="/suric-text-th.png" alt="สำนักงานบริหารการวิจัย นวัตกรรมและการสร้างสรรค์" /></div>
     <nav aria-label="เมนูหลัก">
-      <button className={view==='list'||view==='detail'?'active':''} onClick={()=>onView('list')}><span>◫</span>รายการงานวิจัย</button>
-      {role!=='นักวิจัย'&&<button className={view==='create'?'active':''} onClick={()=>onView('create')}><span>＋</span>เพิ่มงานวิจัย</button>}
-      {role==='ผู้ดูแลระบบ'&&<div className="admin-navigation"><button className="admin-toggle" aria-expanded={adminExpanded} aria-controls="admin-menu" onClick={()=>setAdminExpanded(!adminExpanded)}>ระบบจัดการข้อมูลพื้นฐาน <span aria-hidden="true">{adminExpanded?'−':'＋'}</span></button><div id="admin-menu" hidden={!adminExpanded}>{adminModules.map(module=><button key={module.id} className={view===module.id?'active':''} aria-current={view===module.id?'page':undefined} onClick={()=>onView(module.id)}>{module.title}</button>)}</div></div>}
+      <p className="nav-caption">งานวิจัย</p>
+      <button className={view==='overview'?'active':''} aria-current={view==='overview'?'page':undefined} onClick={()=>onView('overview')}><IconArchive aria-hidden="true"/>ภาพรวมงานวิจัย</button>
+      <button className={view==='list'||view==='detail'?'active':''} onClick={()=>onView('list')}><IconFileDescription aria-hidden="true"/>รายการงานวิจัย</button>
+      {role!=='นักวิจัย'&&<button className={view==='create'?'active':''} onClick={()=>onView('create')}><IconPlus aria-hidden="true"/>เพิ่มงานวิจัย</button>}
+      {role==='ผู้ดูแลระบบ'&&<div className="admin-navigation"><button className="admin-toggle" aria-expanded={adminExpanded} aria-controls="admin-menu" onClick={()=>setAdminExpanded(!adminExpanded)}>ระบบจัดการข้อมูลพื้นฐาน {adminExpanded?<IconChevronUp aria-hidden="true"/>:<IconChevronDown aria-hidden="true"/>}</button><div id="admin-menu" hidden={!adminExpanded}>{adminModules.map((module,index)=>{const MenuIcon=menuIcons[index]??IconFileDescription;return <button key={module.id} className={view===module.id?'active':''} aria-current={view===module.id?'page':undefined} onClick={()=>onView(module.id)}><MenuIcon aria-hidden="true"/>{module.title}</button>})}</div></div>}
     </nav>
-    <div className="sidebar-foot"><span className="avatar">{role.charAt(0)}</span><div><b>กมลชนก สาธิต</b><small>{role}</small></div><button className="icon-button" aria-label="ออกจากระบบ" onClick={onLogout}>↗</button></div>
+    <div className="sidebar-foot"><span className="avatar">{role.charAt(0)}</span><div><b>กมลชนก สาธิต</b><small>{role}</small></div><button className="icon-button" aria-label="ออกจากระบบ" onClick={onLogout}><IconLogout size={16} aria-hidden="true"/></button></div>
   </aside>
 }
 
@@ -79,20 +88,63 @@ function Header({title,subtitle}:{title:string;subtitle:string}) {
   return <header className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className="header-actions"><span className="prototype-pill">Prototype</span></div></header>
 }
 
-function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items:Research[];onOpen:(id:number)=>void;onCreate:()=>void}) {
-  const [query,setQuery]=useState('')
-  const [status,setStatus]=useState('ทั้งหมด')
-  const [scenario,setScenario]=useState<'normal'|'loading'|'error'|'empty'>('normal')
-  const filtered=useMemo(()=>items.filter(r=>(r.title.includes(query)||r.contract.toLowerCase().includes(query.toLowerCase()))&&(status==='ทั้งหมด'||r.status===status)),[items,query,status])
+function ResearchOverview({items}:{items:Research[]}) {
   const active=items.filter(r=>!isTerminal(r.status)).length
-  return <main className="page">
+  return <main className="page register-page">
+    <Header title="ภาพรวมงานวิจัย" subtitle="สรุปจำนวนโครงการและงบประมาณของงานวิจัยที่คุณมีสิทธิ์ดู"/>
+    <section className="ledger-summary" aria-label="สรุปโครงการ"><div><span>โครงการทั้งหมด</span><IconArchive className="summary-icon" aria-hidden="true"/><strong>{items.length}</strong><small>รายการในระบบ</small></div><div><span>กำลังดำเนินการ</span><IconClock className="summary-icon" aria-hidden="true"/><strong>{active}</strong><small>ต้องติดตามต่อ</small></div><div><span>งบประมาณทั้งหมด</span><IconCoin className="summary-icon" aria-hidden="true"/><strong>{(items.reduce((s,r)=>s+r.budget,0)/1000000).toFixed(2)}</strong><small>ล้านบาท</small></div><div className="deadline"><span>เสร็จสิ้นแล้ว</span><IconCheck className="summary-icon" aria-hidden="true"/><strong>{items.filter(item=>item.status==='โครงการเสร็จสิ้น').length}</strong><small>โครงการ</small></div></section>
+  </main>
+}
+
+function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items:Research[];onOpen:(id:number)=>void;onCreate:()=>void}) {
+  const [draftFilters,setDraftFilters]=useState(emptyResearchFilters)
+  const [appliedFilters,setAppliedFilters]=useState(emptyResearchFilters)
+  const [page,setPage]=useState(1)
+  const [pageSize,setPageSize]=useState(10)
+  const [sort,setSort]=useState<ResearchSort|null>(null)
+  const toggleSort=(key:ResearchSortKey)=>{setSort(current=>({key,direction:current?.key===key && current.direction==='asc'?'desc':'asc'}));setPage(1)}
+  const units=[...new Set(items.map(item=>item.unit))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'))
+  const leads=[...new Set(items.map(item=>item.lead))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'))
+  const clearFilters=()=>{setDraftFilters(emptyResearchFilters);setAppliedFilters(emptyResearchFilters);setPage(1)}
+  const [scenario,setScenario]=useState<'normal'|'loading'|'error'|'empty'>('normal')
+  const filtered=useMemo(()=>filterResearches(items,appliedFilters),[items,appliedFilters])
+  const sorted=useMemo(()=>sortResearches(filtered,sort),[filtered,sort])
+  const pagination=paginate(sorted,page,pageSize)
+  return <main className="page register-page">
     <Header title="ทะเบียนงานวิจัย" subtitle="ติดตามทุกโครงการจากสัญญาถึงการปิดบัญชี"/>
-    <section className="ledger-summary" aria-label="สรุปโครงการ"><div><span>โครงการทั้งหมด</span><strong>{items.length}</strong><small>รายการในระบบ</small></div><div><span>กำลังดำเนินการ</span><strong>{active}</strong><small>ต้องติดตามต่อ</small></div><div><span>งบประมาณรวม</span><strong>{(items.reduce((s,r)=>s+r.budget,0)/1000000).toFixed(2)}</strong><small>ล้านบาท</small></div><div className="deadline"><span>เสร็จสิ้นแล้ว</span><strong>{items.filter(item=>item.status==='โครงการเสร็จสิ้น').length}</strong><small>โครงการ</small></div></section>
     <section className="register">
-      <div className="register-head"><div><h2>รายการโครงการ</h2><p>พบ {filtered.length} จาก {items.length} รายการ</p></div>{canManage&&<button className="primary" onClick={onCreate}>＋ เพิ่มงานวิจัย</button>}</div>
-      <div className="filters"><label><span className="sr-only">ค้นหางานวิจัย</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ค้นหาชื่อโครงการหรือเลขสัญญา…"/></label><label><span className="sr-only">กรองสถานะ</span><select value={status} onChange={e=>setStatus(e.target.value)}><option>ทั้งหมด</option>{statuses.map(item=><option key={item}>{item}</option>)}</select></label><label className="scenario"><span>สถานะสาธิต</span><select value={scenario} onChange={e=>setScenario(e.target.value as typeof scenario)}><option value="normal">ข้อมูลพร้อม</option><option value="loading">กำลังโหลด</option><option value="error">เกิดข้อผิดพลาด</option><option value="empty">ยังไม่มีข้อมูล</option></select></label></div>
-      {scenario==='loading'?<div className="state-panel" role="status"><span className="loader"/><b>กำลังโหลดทะเบียนงานวิจัย…</b><p>ระบบกำลังเตรียมข้อมูลล่าสุด</p></div>:scenario==='error'?<div className="state-panel error" role="alert"><b>ไม่สามารถโหลดข้อมูลได้</b><p>การเชื่อมต่อขัดข้อง กรุณาลองอีกครั้ง</p><button className="secondary" onClick={()=>setScenario('normal')}>ลองอีกครั้ง</button></div>:scenario==='empty'?<div className="empty-state"><b>ยังไม่มีงานวิจัยในระบบ</b><p>{canManage?'เริ่มต้นทะเบียนด้วยการเพิ่มโครงการแรก':'เมื่อผู้ประสานงานเพิ่มโครงการแล้ว รายการจะแสดงที่นี่'}</p>{canManage&&<button className="primary" onClick={onCreate}>เพิ่มงานวิจัย</button>}</div>:filtered.length===0?<div className="empty-state"><b>ไม่พบโครงการที่ตรงกับคำค้น</b><p>ลองเปลี่ยนคำค้นหรือล้างตัวกรอง</p><button onClick={()=>{setQuery('');setStatus('ทั้งหมด')}}>ล้างตัวกรอง</button></div>:
-      <div className="table-wrap"><table><thead><tr><th>เลขสัญญา</th><th>โครงการ / ผู้รับผิดชอบ</th><th>สถานะ</th><th>กระบวนการปัจจุบัน</th><th>สิ้นสุด</th><th><span className="sr-only">เปิด</span></th></tr></thead><tbody>{filtered.map(r=><tr key={r.id}><td><b className="contract">{r.contract}</b><small>{r.kind}</small></td><td><button className="title-link" onClick={()=>onOpen(r.id)}>{r.title}</button><small>{r.lead} · {r.unit}</small></td><td><span className={researchStatusClass(r.status)}>{r.status}</span></td><td><div className="progress-mini"><span style={{width:String(r.process/8*100)+'%'}}/></div><small>{r.process}/8 · {processSteps[r.process-1]}</small></td><td>{r.endDate}</td><td><button className="row-action" aria-label={'เปิด '+r.title} onClick={()=>onOpen(r.id)}>→</button></td></tr>)}</tbody></table></div>}
+      <div className="register-head"><div><h2>รายการโครงการ</h2><p>พบ {filtered.length} จาก {items.length} รายการ</p></div></div>
+      <form className="research-filter-form" onSubmit={event=>{event.preventDefault();setAppliedFilters({...draftFilters});setPage(1)}}>
+        <div className="research-filter-column">
+          <label><span>ชื่อโครงการวิจัย</span><input value={draftFilters.query} onChange={e=>setDraftFilters({...draftFilters,query:e.target.value})} placeholder="ชื่อโครงการหรือเลขสัญญา"/></label>
+          <label><span>ปีงบประมาณ</span><select disabled aria-describedby="fiscal-year-hint"><option>-- เลือกปีงบประมาณ --</option></select></label>
+          <div className="research-filter-actions"><button className="primary" type="submit"><IconSearch size={16} aria-hidden="true"/>ค้นหา</button><button className="secondary" type="button" onClick={clearFilters}>ล้างตัวกรอง</button></div>
+          <p id="fiscal-year-hint" className="filter-hint">ยังไม่มีข้อมูลปีงบประมาณใน demo</p>
+        </div>
+        <div className="research-filter-column">
+          <ResponsibleSearch value={draftFilters.lead} names={leads} onChange={lead=>setDraftFilters({...draftFilters,lead})}/>
+          <label><span>หน่วยงาน</span><select value={draftFilters.unit} onChange={e=>setDraftFilters({...draftFilters,unit:e.target.value})}><option value="">-- เลือกหน่วยงาน --</option>{units.map(unit=><option key={unit}>{unit}</option>)}</select></label>
+          <label><span>สถานะโครงการ</span><select value={draftFilters.status} onChange={e=>setDraftFilters({...draftFilters,status:e.target.value})}><option value="">-- เลือกสถานะโครงการ --</option>{statuses.map(status=><option key={status}>{status}</option>)}</select></label>
+        </div>
+      </form>
+      <details className="research-demo-tools"><summary>ตัวเลือกสถานะสาธิต</summary><label>สถานะสาธิต<select value={scenario} onChange={e=>setScenario(e.target.value as typeof scenario)}><option value="normal">ข้อมูลพร้อม</option><option value="loading">กำลังโหลด</option><option value="error">เกิดข้อผิดพลาด</option><option value="empty">ยังไม่มีข้อมูล</option></select></label></details>
+      <div className="research-table-controls">
+        <label htmlFor="research-page-size">แสดง <select id="research-page-size" value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}}>{[10,25,50,100].map(size=><option key={size} value={size}>{size}</option>)}</select> รายการต่อหน้า</label>
+        <div className="research-table-actions">
+          <button type="button" className="research-export" disabled title="ส่งออกข้อมูล — ยังไม่เปิดใช้งาน" aria-label="ส่งออกข้อมูล (ยังไม่เปิดใช้งาน)"><IconFileSpreadsheet size={17} aria-hidden="true"/>ส่งออกข้อมูล</button>
+          {canManage&&<button type="button" className="primary" onClick={onCreate}><IconPlus size={17} aria-hidden="true"/>เพิ่มงานวิจัย</button>}
+        </div>
+      </div>
+      {scenario==='loading'?<div className="state-panel" role="status"><span className="loader"/><b>กำลังโหลดทะเบียนงานวิจัย…</b><p>ระบบกำลังเตรียมข้อมูลล่าสุด</p></div>:scenario==='error'?<div className="state-panel error" role="alert"><b>ไม่สามารถโหลดข้อมูลได้</b><p>การเชื่อมต่อขัดข้อง กรุณาลองอีกครั้ง</p><button className="secondary" onClick={()=>setScenario('normal')}>ลองอีกครั้ง</button></div>:scenario==='empty'?<div className="empty-state"><b>ยังไม่มีงานวิจัยในระบบ</b><p>{canManage?'เริ่มต้นทะเบียนด้วยการเพิ่มโครงการแรก':'เมื่อผู้ประสานงานเพิ่มโครงการแล้ว รายการจะแสดงที่นี่'}</p>{canManage&&<button className="primary" onClick={onCreate}>เพิ่มงานวิจัย</button>}</div>:filtered.length===0?<div className="empty-state"><b>ไม่พบโครงการที่ตรงกับคำค้น</b><p>ลองเปลี่ยนคำค้นหรือล้างตัวกรอง</p><button onClick={clearFilters}>ล้างตัวกรอง</button></div>:
+      <div className="table-wrap"><table><thead><tr>{researchColumns.map(column=><th key={column.key} scope="col" aria-sort={sort?.key===column.key?(sort.direction==='asc'?'ascending':'descending'):'none'}><button type="button" className="research-sort-button" title={`เรียงตาม${column.description}`} onClick={()=>toggleSort(column.key)}><span>{column.label}</span><span className="sort-indicator" aria-hidden="true">{sort?.key===column.key?(sort.direction==='asc'?'↑':'↓'):'↕'}</span></button></th>)}</tr></thead><tbody>{pagination.items.map(r=><tr key={r.id}><td><b className="contract">{r.contract}</b><small>{r.kind}</small></td><td><button className="title-link" onClick={()=>onOpen(r.id)}>{r.title}</button><small>{r.lead} · {r.unit}</small></td><td className="research-fund"><span>{r.fund||'ยังไม่ระบุทุน'}</span><small>{r.budget.toLocaleString('th-TH')} บาท</small></td><td><span className={researchStatusClass(r.status)}>{r.status}</span></td><td><div className="progress-mini"><span style={{width:String(r.process/8*100)+'%'}}/></div><small>{r.process}/8 · {processSteps[r.process-1]}</small></td><td>{r.endDate}</td></tr>)}</tbody></table></div>}
+      {scenario==='normal' && <footer className="research-list-footer">
+        <p role="status">แสดงรายการ {pagination.start} - {pagination.end} จากทั้งหมด {pagination.total} รายการ</p>
+        <nav aria-label="เปลี่ยนหน้ารายการงานวิจัย">
+          <button type="button" disabled={pagination.page===1} onClick={()=>setPage(pagination.page-1)}>ย้อนกลับ</button>
+          {Array.from({length:pagination.pageCount},(_,index)=>index+1).filter(number=>number===1 || number===pagination.pageCount || Math.abs(number-pagination.page)<=1).map((number,index,numbers)=><span className="pagination-item" key={number}>{index>0 && number-numbers[index-1]>1 && <span aria-hidden="true">…</span>}<button type="button" aria-label={`หน้า ${number}`} aria-current={pagination.page===number?'page':undefined} onClick={()=>setPage(number)}>{number}</button></span>)}
+          <button type="button" disabled={pagination.page===pagination.pageCount} onClick={()=>setPage(pagination.page+1)}>ถัดไป</button>
+        </nav>
+      </footer>}
     </section>
   </main>
 }
@@ -227,6 +279,7 @@ export default function App(){
   const navigate=(next:View)=>{setView(next);setToast('')}
   return <div className="app-shell"><a className="skip-link" href="#main">ข้ามไปยังเนื้อหา</a><Sidebar role={role} view={view} onView={navigate} onLogout={()=>setRole(null)}/><div id="main" tabIndex={-1} className="content">
     {toast&&<div className="toast" role="status"><b>สำเร็จ</b>{toast}<button aria-label="ปิดข้อความ" onClick={()=>setToast('')}>×</button></div>}
+    {view==='overview'&&<ResearchOverview items={accessibleResearches}/>}
     {view==='list'&&<ResearchList canManage={canManage} items={accessibleResearches} onOpen={id=>{if(accessibleResearches.some(item=>item.id===id)){setSelected(id);navigate('detail')}}} onCreate={()=>navigate('create')}/>}
     {view==='detail'&&!research&&<main className="page"><p role="alert">ไม่พบงานวิจัยหรือคุณไม่มีสิทธิ์เข้าถึง</p><button className="secondary" onClick={()=>navigate('list')}>กลับรายการงานวิจัย</button></main>}
     {view==='detail'&&research&&<Detail key={research.id} canManage={canManage} research={research} onBack={()=>navigate('list')} onChange={change} onSaveSdgs={saveSdgs} onSaveAbstracts={patch=>{try{setResearches(changeOwnAbstracts(researches,selected,role,demoResearcher.email,patch));return null}catch(error){return error instanceof Error?error.message:'บันทึกไม่สำเร็จ'}}}/>}
