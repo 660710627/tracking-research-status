@@ -1,5 +1,7 @@
 import { demoResearcher, visibleResearches, changeOwnAbstracts } from './researchVisibility'
 import { emptyResearchFilters, filterResearches } from './researchFilters'
+import ResearchSelection from './ResearchSelection'
+import OverviewPie from './OverviewPie'
 import ResponsibleSearch from './ResponsibleSearch'
 import { paginate } from './pagination'
 import { researchColumns, sortResearches } from './researchSort'
@@ -8,7 +10,7 @@ import ProjectMemberPage from './ProjectMemberPage'
 import type { ProjectMember } from './ProjectMemberPage'
 import CalendarInput from './CalendarInput'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconFileDescription, IconFileSpreadsheet, IconPlus, IconCircleCheck, IconUser, IconBook, IconInfoCircle, IconBuilding, IconReport, IconChevronDown, IconChevronUp, IconLogout, IconClock, IconCoin, IconCheck, IconArchive, IconSearch } from '@tabler/icons-react'
+import { IconTrash, IconFileDescription, IconFileSpreadsheet, IconPlus, IconCircleCheck, IconUser, IconBook, IconInfoCircle, IconBuilding, IconReport, IconChevronDown, IconChevronUp, IconLogout, IconArchive, IconSearch } from '@tabler/icons-react'
 import { canManageResearch, changeResearch, changeResearchSdgs, isTerminal, researchDraft, statuses } from './research'
 import type { Research, ResearchAction, ResearchDraft, Role } from './research'
 import { ConfirmResearch, StatusPanel } from './ResearchControls'
@@ -90,53 +92,76 @@ function Header({title,subtitle}:{title:string;subtitle:string}) {
 
 function ResearchOverview({items}:{items:Research[]}) {
   const active=items.filter(r=>!isTerminal(r.status)).length
+  const completed=items.filter(item=>item.status==='โครงการเสร็จสิ้น').length
+  const totalBudget=items.reduce((sum,item)=>sum+item.budget,0)
+  const kinds=[...new Set(items.map(item=>item.kind))].map(label=>({label,value:items.filter(item=>item.kind===label).length}))
+  const budgets=[...new Set(items.map(item=>item.unit))].map(label=>({label:label||'ไม่ระบุหน่วยงาน',value:items.filter(item=>item.unit===label).reduce((sum,item)=>sum+item.budget,0)}))
   return <main className="page register-page">
     <Header title="ภาพรวมงานวิจัย" subtitle="สรุปจำนวนโครงการและงบประมาณของงานวิจัยที่คุณมีสิทธิ์ดู"/>
-    <section className="ledger-summary" aria-label="สรุปโครงการ"><div><span>โครงการทั้งหมด</span><IconArchive className="summary-icon" aria-hidden="true"/><strong>{items.length}</strong><small>รายการในระบบ</small></div><div><span>กำลังดำเนินการ</span><IconClock className="summary-icon" aria-hidden="true"/><strong>{active}</strong><small>ต้องติดตามต่อ</small></div><div><span>งบประมาณทั้งหมด</span><IconCoin className="summary-icon" aria-hidden="true"/><strong>{(items.reduce((s,r)=>s+r.budget,0)/1000000).toFixed(2)}</strong><small>ล้านบาท</small></div><div className="deadline"><span>เสร็จสิ้นแล้ว</span><IconCheck className="summary-icon" aria-hidden="true"/><strong>{items.filter(item=>item.status==='โครงการเสร็จสิ้น').length}</strong><small>โครงการ</small></div></section>
+    <section className="overview-pies" aria-label="สรุปโครงการด้วยพายชาร์ท">
+      <OverviewPie title="โครงการทั้งหมด" value={String(items.length)} unit="โครงการ" segments={kinds}/>
+      <OverviewPie title="กำลังดำเนินการ" value={String(active)} unit="โครงการ" segments={[{label:'กำลังดำเนินการ',value:active},{label:'เสร็จสิ้นหรือยุติ',value:items.length-active}]}/>
+      <OverviewPie title="งบประมาณทั้งหมด" value={(totalBudget/1000000).toFixed(2)} unit="ล้านบาท" segments={budgets} money/>
+      <OverviewPie title="เสร็จสิ้นแล้ว" value={String(completed)} unit="โครงการ" segments={[{label:'เสร็จสิ้นแล้ว',value:completed},{label:'สถานะอื่น',value:items.length-completed}]}/>
+    </section>
   </main>
 }
 
 function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items:Research[];onOpen:(id:number)=>void;onCreate:()=>void}) {
   const [draftFilters,setDraftFilters]=useState(emptyResearchFilters)
   const [appliedFilters,setAppliedFilters]=useState(emptyResearchFilters)
+  const [selectedIds,setSelectedIds]=useState<number[]>([])
   const [page,setPage]=useState(1)
   const [pageSize,setPageSize]=useState(10)
   const [sort,setSort]=useState<ResearchSort|null>(null)
   const toggleSort=(key:ResearchSortKey)=>{setSort(current=>({key,direction:current?.key===key && current.direction==='asc'?'desc':'asc'}));setPage(1)}
   const units=[...new Set(items.map(item=>item.unit))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'))
   const leads=[...new Set(items.map(item=>item.lead))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'))
-  const clearFilters=()=>{setDraftFilters(emptyResearchFilters);setAppliedFilters(emptyResearchFilters);setPage(1)}
+  const clearFilters=()=>{setDraftFilters(emptyResearchFilters);setAppliedFilters(emptyResearchFilters);setPage(1);setSelectedIds([])}
   const [scenario,setScenario]=useState<'normal'|'loading'|'error'|'empty'>('normal')
   const filtered=useMemo(()=>filterResearches(items,appliedFilters),[items,appliedFilters])
   const sorted=useMemo(()=>sortResearches(filtered,sort),[filtered,sort])
   const pagination=paginate(sorted,page,pageSize)
+  const selectable=scenario==='normal'?filtered:[]
+  const selected=selectable.filter(item=>selectedIds.includes(item.id))
+  const allSelected=selectable.length>0 && selected.length===selectable.length
+  const toggleAll=()=>setSelectedIds(allSelected?[]:selectable.map(item=>item.id))
+  const toggleItem=(id:number)=>setSelectedIds(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id])
   return <main className="page register-page">
     <Header title="ทะเบียนงานวิจัย" subtitle="ติดตามทุกโครงการจากสัญญาถึงการปิดบัญชี"/>
     <section className="register">
       <div className="register-head"><div><h2>รายการโครงการ</h2><p>พบ {filtered.length} จาก {items.length} รายการ</p></div></div>
-      <form className="research-filter-form" onSubmit={event=>{event.preventDefault();setAppliedFilters({...draftFilters});setPage(1)}}>
-        <div className="research-filter-column">
-          <label><span>ชื่อโครงการวิจัย</span><input value={draftFilters.query} onChange={e=>setDraftFilters({...draftFilters,query:e.target.value})} placeholder="ชื่อโครงการหรือเลขสัญญา"/></label>
-          <label><span>ปีงบประมาณ</span><select disabled aria-describedby="fiscal-year-hint"><option>-- เลือกปีงบประมาณ --</option></select></label>
-          <div className="research-filter-actions"><button className="primary" type="submit"><IconSearch size={16} aria-hidden="true"/>ค้นหา</button><button className="secondary" type="button" onClick={clearFilters}>ล้างตัวกรอง</button></div>
-          <p id="fiscal-year-hint" className="filter-hint">ยังไม่มีข้อมูลปีงบประมาณใน demo</p>
-        </div>
-        <div className="research-filter-column">
-          <ResponsibleSearch value={draftFilters.lead} names={leads} onChange={lead=>setDraftFilters({...draftFilters,lead})}/>
-          <label><span>หน่วยงาน</span><select value={draftFilters.unit} onChange={e=>setDraftFilters({...draftFilters,unit:e.target.value})}><option value="">-- เลือกหน่วยงาน --</option>{units.map(unit=><option key={unit}>{unit}</option>)}</select></label>
-          <label><span>สถานะโครงการ</span><select value={draftFilters.status} onChange={e=>setDraftFilters({...draftFilters,status:e.target.value})}><option value="">-- เลือกสถานะโครงการ --</option>{statuses.map(status=><option key={status}>{status}</option>)}</select></label>
-        </div>
-      </form>
+      <details className="research-filter-panel" open>
+        <summary>ค้นหาและกรองงานวิจัย <IconChevronDown size={16} aria-hidden="true"/></summary>
+        <form className="research-filter-form" onSubmit={event=>{event.preventDefault();setAppliedFilters({...draftFilters});setPage(1);setSelectedIds([])}}>
+          <div className="research-filter-column">
+            <label><span>ชื่อโครงการวิจัย</span><input value={draftFilters.query} onChange={e=>setDraftFilters({...draftFilters,query:e.target.value})} placeholder="ชื่อโครงการหรือเลขสัญญา"/></label>
+            <ResponsibleSearch value={draftFilters.lead} names={leads} onChange={lead=>setDraftFilters({...draftFilters,lead})}/>
+            <label><span>หน่วยงาน</span><select value={draftFilters.unit} onChange={e=>setDraftFilters({...draftFilters,unit:e.target.value})}><option value="">-- เลือกหน่วยงาน --</option>{units.map(unit=><option key={unit}>{unit}</option>)}</select></label>
+            <label><span>ปีงบประมาณ</span><select disabled aria-describedby="fiscal-year-hint"><option>-- เลือกปีงบประมาณ --</option></select></label>
+            <p id="fiscal-year-hint" className="filter-hint">ยังไม่มีข้อมูลปีงบประมาณใน demo</p>
+            <label><span>สถานะโครงการ</span><select value={draftFilters.status} onChange={e=>setDraftFilters({...draftFilters,status:e.target.value})}><option value="">-- เลือกสถานะโครงการ --</option>{statuses.map(status=><option key={status}>{status}</option>)}</select></label>
+            <div className="research-filter-actions"><button className="primary" type="submit"><IconSearch size={16} aria-hidden="true"/>ค้นหา</button><button className="secondary" type="button" onClick={clearFilters}>ล้างตัวกรอง</button></div>
+          </div>
+        </form>
+      </details>
       <details className="research-demo-tools"><summary>ตัวเลือกสถานะสาธิต</summary><label>สถานะสาธิต<select value={scenario} onChange={e=>setScenario(e.target.value as typeof scenario)}><option value="normal">ข้อมูลพร้อม</option><option value="loading">กำลังโหลด</option><option value="error">เกิดข้อผิดพลาด</option><option value="empty">ยังไม่มีข้อมูล</option></select></label></details>
       <div className="research-table-controls">
-        <label htmlFor="research-page-size">แสดง <select id="research-page-size" value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}}>{[10,25,50,100].map(size=><option key={size} value={size}>{size}</option>)}</select> รายการต่อหน้า</label>
+        <div className="research-selection-actions">
+          <label className="research-select-all"><ResearchSelection checked={allSelected} mixed={selected.length>0 && !allSelected} disabled={!selectable.length} label="เลือกงานวิจัยทั้งหมดที่ตรงกับตัวกรอง" onChange={toggleAll}/>เลือกทั้งหมด</label>
+          {selected.length>0 && canManage && <button type="button" className="research-trash" disabled aria-label="ลบงานวิจัยที่เลือก (ยังไม่เปิดใช้งาน)" title="ลบงานวิจัยที่เลือก — ยังไม่เปิดใช้งาน"><IconTrash size={18} aria-hidden="true"/></button>}
+        </div>
         <div className="research-table-actions">
-          <button type="button" className="research-export" disabled title="ส่งออกข้อมูล — ยังไม่เปิดใช้งาน" aria-label="ส่งออกข้อมูล (ยังไม่เปิดใช้งาน)"><IconFileSpreadsheet size={17} aria-hidden="true"/>ส่งออกข้อมูล</button>
+          <label htmlFor="research-page-size">แสดง <select id="research-page-size" value={pageSize} onChange={event=>{setPageSize(Number(event.target.value));setPage(1)}}>{[10,25,50,100].map(size=><option key={size} value={size}>{size}</option>)}</select> รายการต่อหน้า</label>
+          <button type="button" className="research-export" disabled title="ส่งออกข้อมูล — ยังไม่เปิดใช้งาน"><IconFileSpreadsheet size={17} aria-hidden="true"/>ส่งออกข้อมูล</button>
           {canManage&&<button type="button" className="primary" onClick={onCreate}><IconPlus size={17} aria-hidden="true"/>เพิ่มงานวิจัย</button>}
         </div>
       </div>
+      {selected.length>0 && <div className="research-selection-toolbar" role="region" aria-label="การดำเนินการกับงานวิจัยที่เลือก">
+        <span role="status">เลือกแล้ว {selected.length} รายการ</span>
+      </div>}
       {scenario==='loading'?<div className="state-panel" role="status"><span className="loader"/><b>กำลังโหลดทะเบียนงานวิจัย…</b><p>ระบบกำลังเตรียมข้อมูลล่าสุด</p></div>:scenario==='error'?<div className="state-panel error" role="alert"><b>ไม่สามารถโหลดข้อมูลได้</b><p>การเชื่อมต่อขัดข้อง กรุณาลองอีกครั้ง</p><button className="secondary" onClick={()=>setScenario('normal')}>ลองอีกครั้ง</button></div>:scenario==='empty'?<div className="empty-state"><b>ยังไม่มีงานวิจัยในระบบ</b><p>{canManage?'เริ่มต้นทะเบียนด้วยการเพิ่มโครงการแรก':'เมื่อผู้ประสานงานเพิ่มโครงการแล้ว รายการจะแสดงที่นี่'}</p>{canManage&&<button className="primary" onClick={onCreate}>เพิ่มงานวิจัย</button>}</div>:filtered.length===0?<div className="empty-state"><b>ไม่พบโครงการที่ตรงกับคำค้น</b><p>ลองเปลี่ยนคำค้นหรือล้างตัวกรอง</p><button onClick={clearFilters}>ล้างตัวกรอง</button></div>:
-      <div className="table-wrap"><table><thead><tr>{researchColumns.map(column=><th key={column.key} scope="col" aria-sort={sort?.key===column.key?(sort.direction==='asc'?'ascending':'descending'):'none'}><button type="button" className="research-sort-button" title={`เรียงตาม${column.description}`} onClick={()=>toggleSort(column.key)}><span>{column.label}</span><span className="sort-indicator" aria-hidden="true">{sort?.key===column.key?(sort.direction==='asc'?'↑':'↓'):'↕'}</span></button></th>)}</tr></thead><tbody>{pagination.items.map(r=><tr key={r.id}><td><b className="contract">{r.contract}</b><small>{r.kind}</small></td><td><button className="title-link" onClick={()=>onOpen(r.id)}>{r.title}</button><small>{r.lead} · {r.unit}</small></td><td className="research-fund"><span>{r.fund||'ยังไม่ระบุทุน'}</span><small>{r.budget.toLocaleString('th-TH')} บาท</small></td><td><span className={researchStatusClass(r.status)}>{r.status}</span></td><td><div className="progress-mini"><span style={{width:String(r.process/8*100)+'%'}}/></div><small>{r.process}/8 · {processSteps[r.process-1]}</small></td><td>{r.endDate}</td></tr>)}</tbody></table></div>}
+      <div className="table-wrap"><table><thead><tr><th className="research-select-cell" scope="col"><span className="sr-only">เลือกงานวิจัย</span></th>{researchColumns.map(column=><th key={column.key} scope="col" aria-sort={sort?.key===column.key?(sort.direction==='asc'?'ascending':'descending'):'none'}><button type="button" className="research-sort-button" title={`เรียงตาม${column.description}`} onClick={()=>toggleSort(column.key)}><span>{column.label}</span><span className="sort-indicator" aria-hidden="true">{sort?.key===column.key?(sort.direction==='asc'?'↑':'↓'):'↕'}</span></button></th>)}</tr></thead><tbody>{pagination.items.map(r=><tr key={r.id} className={selectedIds.includes(r.id)?'research-row-selected':undefined}><td className="research-select-cell"><ResearchSelection checked={selectedIds.includes(r.id)} label={`เลือก ${r.title} (${r.contract})`} onChange={()=>toggleItem(r.id)}/></td><td><b className="contract">{r.contract}</b><small>{r.kind}</small></td><td><button className="title-link" onClick={()=>onOpen(r.id)}>{r.title}</button><small>{r.lead} · {r.unit}</small></td><td className="research-fund"><span>{r.fund||'ยังไม่ระบุทุน'}</span><small>{r.budget.toLocaleString('th-TH')} บาท</small></td><td><span className={researchStatusClass(r.status)}>{r.status}</span></td><td><div className="progress-mini"><span style={{width:String(r.process/8*100)+'%'}}/></div><small>{r.process}/8 · {processSteps[r.process-1]}</small></td><td>{r.endDate}</td></tr>)}</tbody></table></div>}
       {scenario==='normal' && <footer className="research-list-footer">
         <p role="status">แสดงรายการ {pagination.start} - {pagination.end} จากทั้งหมด {pagination.total} รายการ</p>
         <nav aria-label="เปลี่ยนหน้ารายการงานวิจัย">
