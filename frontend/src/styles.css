@@ -364,3 +364,8 @@ th[aria-sort=ascending] .sort-indicator,th[aria-sort=descending] .sort-indicator
 .overview-pie-legend b{font-weight:500;font-variant-numeric:tabular-nums}
 .overview-pie-empty{min-height:180px;display:grid;place-items:center;color:#61738d;font-size:13px}
 @media(max-width:760px){.overview-pies{grid-template-columns:1fr}}
+.research-detail:has(.sdg-editing)>.research-data{display:contents}
+.research-detail:has(.sdg-editing) .research-sheet{grid-column:1;grid-row:1}
+.research-detail:has(.sdg-editing)>.research-tracking{grid-column:2;grid-row:1}
+.research-detail .sdg-editing{grid-column:1/-1;grid-row:2;min-width:0;margin-top:0}
+@media(max-width:760px){.research-detail:has(.sdg-editing)>.research-tracking{grid-column:1;grid-row:3}}
