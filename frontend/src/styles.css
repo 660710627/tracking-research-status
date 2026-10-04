@@ -159,9 +159,11 @@
 .sdg-success{color:#24513a;background:#eaf4ee;padding:8px 10px;font-size:13px;border-radius:5px}
 .create-sdgs{border-top:1px solid var(--line);margin-top:18px;padding-top:14px}
 .create-sdgs h2{font-size:19px;margin-bottom:10px}
-.create-sdgs .sdg-options{grid-template-rows:repeat(6,auto);grid-template-columns:repeat(3,minmax(0,1fr))}
+.create-sdgs .sdg-options,.sdg-editing .sdg-options{grid-auto-flow:column;grid-template-rows:repeat(6,auto);grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:1050px){.create-sdgs .sdg-options{grid-auto-flow:column;grid-template-rows:repeat(9,auto);grid-template-columns:repeat(2,minmax(0,1fr))}.sdg-options{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:1fr}}
 @media(max-width:760px){.create-sdgs .sdg-options{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:1fr}.sdg-heading{flex-wrap:wrap}.research-data{min-width:0}.research-detail:has(.inline-editing) .research-tracking{grid-row:auto}}
+@media(max-width:1050px){.sdg-editing .sdg-options{grid-auto-flow:column;grid-template-rows:repeat(9,auto);grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.sdg-editing .sdg-options{grid-auto-flow:row;grid-template-rows:none;grid-template-columns:1fr}}
 .admin-edit-preview:disabled{opacity:1;background:var(--blue);color:#fff;cursor:not-allowed}
 .toast{max-width:calc(100vw - 32px)}
 @media(max-width:1050px) and (min-width:761px){.research-detail{grid-template-columns:minmax(0,1fr) 310px}.research-sheet .facts-grid{grid-template-columns:1fr}}
