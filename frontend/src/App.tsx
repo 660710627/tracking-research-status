@@ -1,3 +1,4 @@
+import './topNavigation.css'
 import { demoResearcher, visibleResearches, changeOwnAbstracts } from './researchVisibility'
 import { emptyResearchFilters, filterResearches } from './researchFilters'
 import ResearchSelection from './ResearchSelection'
@@ -11,7 +12,7 @@ import ProjectMemberPage from './ProjectMemberPage'
 import type { ProjectMember } from './ProjectMemberPage'
 import CalendarInput from './CalendarInput'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconTrash, IconFileDescription, IconFileSpreadsheet, IconPlus, IconCircleCheck, IconUser, IconBook, IconInfoCircle, IconBuilding, IconReport, IconChevronDown, IconChevronUp, IconLogout, IconArchive, IconSearch } from '@tabler/icons-react'
+import { IconTrash, IconFileDescription, IconFileSpreadsheet, IconPlus, IconCircleCheck, IconUser, IconBook, IconInfoCircle, IconBuilding, IconReport, IconChevronDown, IconLogout, IconArchive, IconSearch } from '@tabler/icons-react'
 import { canManageResearch, changeResearch, changeResearchSdgs, isTerminal, researchDraft, statuses } from './research'
 import type { Research, ResearchAction, ResearchDraft, Role } from './research'
 import { ConfirmResearch, StatusPanel } from './ResearchControls'
@@ -67,21 +68,20 @@ function Login({onLogin}:{onLogin:(role:Role)=>void}) {
 }
 
 function Sidebar({role,view,onView,onLogout}:{role:Role;view:View;onView:(v:View)=>void;onLogout:()=>void}) {
-  const [adminExpanded,setAdminExpanded]=useState(true)
+  const adminMenu=useRef<HTMLDetailsElement>(null)
   const menuIcons=[IconCircleCheck,IconUser,IconBook,IconInfoCircle,IconBuilding,IconReport]
-  return <aside className="sidebar">
+  const navigate=(next:View)=>{if(adminMenu.current)adminMenu.current.open=false;onView(next)}
+  return <header className="top-navigation">
     <div className="brand"><img className="brand-logo" src="/suric-text-th.png" alt="สำนักงานบริหารการวิจัย นวัตกรรมและการสร้างสรรค์" /></div>
     <nav aria-label="เมนูหลัก">
-      <p className="nav-caption">งานวิจัย</p>
-      <button className={view==='overview'?'active':''} aria-current={view==='overview'?'page':undefined} onClick={()=>onView('overview')}><IconArchive aria-hidden="true"/>ภาพรวมงานวิจัย</button>
-      <button className={view==='list'||view==='detail'?'active':''} onClick={()=>onView('list')}><IconFileDescription aria-hidden="true"/>รายการงานวิจัย</button>
-      {role!=='นักวิจัย'&&<button className={view==='create'?'active':''} onClick={()=>onView('create')}><IconPlus aria-hidden="true"/>เพิ่มงานวิจัย</button>}
-      {role==='ผู้ดูแลระบบ'&&<div className="admin-navigation"><button className="admin-toggle" aria-expanded={adminExpanded} aria-controls="admin-menu" onClick={()=>setAdminExpanded(!adminExpanded)}>ระบบจัดการข้อมูลพื้นฐาน {adminExpanded?<IconChevronUp aria-hidden="true"/>:<IconChevronDown aria-hidden="true"/>}</button><div id="admin-menu" hidden={!adminExpanded}>{adminModules.map((module,index)=>{const MenuIcon=menuIcons[index]??IconFileDescription;return <button key={module.id} className={view===module.id?'active':''} aria-current={view===module.id?'page':undefined} onClick={()=>onView(module.id)}><MenuIcon aria-hidden="true"/>{module.title}</button>})}</div></div>}
+      <button className={view==='overview'?'active':''} aria-current={view==='overview'?'page':undefined} onClick={()=>navigate('overview')}><IconArchive aria-hidden="true"/>ภาพรวมงานวิจัย</button>
+      <button className={view==='list'||view==='detail'?'active':''} aria-current={view==='list'||view==='detail'?'page':undefined} onClick={()=>navigate('list')}><IconFileDescription aria-hidden="true"/>รายการงานวิจัย</button>
+      {role!=='นักวิจัย'&&<button className={view==='create'?'active':''} aria-current={view==='create'?'page':undefined} onClick={()=>navigate('create')}><IconPlus aria-hidden="true"/>เพิ่มงานวิจัย</button>}
+      {role==='ผู้ดูแลระบบ'&&<details ref={adminMenu} data-active={adminModules.some(module=>module.id===view)} onKeyDown={event=>{if(event.key==='Escape'){event.currentTarget.open=false;event.currentTarget.querySelector('summary')?.focus()}}}><summary>ระบบจัดการข้อมูลพื้นฐาน <IconChevronDown aria-hidden="true"/></summary><div className="top-admin-menu">{adminModules.map((module,index)=>{const MenuIcon=menuIcons[index]??IconFileDescription;return <button key={module.id} className={view===module.id?'active':''} aria-current={view===module.id?'page':undefined} onClick={()=>navigate(module.id)}><MenuIcon aria-hidden="true"/>{module.title}</button>})}</div></details>}
     </nav>
-    <div className="sidebar-foot"><span className="avatar">{role.charAt(0)}</span><div><b>กมลชนก สาธิต</b><small>{role}</small></div><button className="icon-button" aria-label="ออกจากระบบ" onClick={onLogout}><IconLogout size={16} aria-hidden="true"/></button></div>
-  </aside>
+    <div className="top-account"><span className="avatar">{role.charAt(0)}</span><div><b>กมลชนก สาธิต</b><small>{role}</small></div><button className="icon-button" aria-label="ออกจากระบบ" onClick={onLogout}><IconLogout size={16} aria-hidden="true"/></button></div>
+  </header>
 }
-
 function Header({title,subtitle}:{title:string;subtitle:string}) {
   return <header className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className="header-actions"><span className="prototype-pill">Prototype</span></div></header>
 }
@@ -298,7 +298,7 @@ export default function App(){
     }catch(error){return error instanceof Error?error.message:'ไม่สามารถลบตำแหน่งทางวิชาการได้'}
   }
   const navigate=(next:View)=>{setView(next);setToast('')}
-  return <div className="app-shell"><a className="skip-link" href="#main">ข้ามไปยังเนื้อหา</a><Sidebar role={role} view={view} onView={navigate} onLogout={()=>setRole(null)}/><div id="main" tabIndex={-1} className="content">
+  return <div className="app-shell top-navigation-layout"><a className="skip-link" href="#main">ข้ามไปยังเนื้อหา</a><Sidebar role={role} view={view} onView={navigate} onLogout={()=>setRole(null)}/><div id="main" tabIndex={-1} className="content">
     {toast&&<div className="toast" role="status"><b>สำเร็จ</b>{toast}<button aria-label="ปิดข้อความ" onClick={()=>setToast('')}>×</button></div>}
     {view==='overview'&&<ResearchOverview items={accessibleResearches}/>}
     {view==='list'&&<ResearchList canManage={canManage} items={accessibleResearches} onOpen={id=>{if(accessibleResearches.some(item=>item.id===id)){setSelected(id);navigate('detail')}}} onCreate={()=>navigate('create')}/>}

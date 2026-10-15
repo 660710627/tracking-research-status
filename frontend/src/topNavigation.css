@@ -1,0 +1,24 @@
+/* Trial navigation layout: remove this import and restore Sidebar to revert. */
+.top-navigation-layout .content{margin-left:0}
+.top-navigation{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:24px;min-height:78px;padding:10px 24px;background:#fff;border-bottom:1px solid #dce7e5;box-shadow:0 2px 10px #163c3808}
+.top-navigation .brand{width:144px;flex-shrink:0;padding:0}
+.top-navigation .brand-logo{max-height:54px}
+.top-navigation nav{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+.top-navigation nav button,.top-navigation summary{display:flex;align-items:center;gap:8px;min-height:40px;padding:9px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#365071;font-size:13px;cursor:pointer;white-space:nowrap}
+.top-navigation nav svg{width:17px;height:17px;flex-shrink:0}
+.top-navigation nav button:hover,.top-navigation summary:hover{background:#f0f8f6}
+.top-navigation nav button.active,.top-navigation details[data-active=true]>summary{background:#e6f4f1;border-color:#b7e2d9;color:#00665c;font-weight:600}
+.top-navigation details{position:relative}
+.top-navigation summary{list-style:none}
+.top-navigation summary::-webkit-details-marker{display:none}
+.top-navigation summary:focus-visible{outline:3px solid #007a6d;outline-offset:3px}
+.top-navigation .top-admin-menu{position:absolute;top:calc(100% + 8px);right:0;display:grid;gap:3px;width:252px;padding:8px;background:#fff;border:1px solid #dce7e5;border-radius:10px;box-shadow:0 8px 24px #163c381a;max-height:65vh;overflow-y:auto}
+.top-navigation .top-admin-menu button{width:100%;text-align:left}
+.top-navigation .top-account{display:flex;align-items:center;gap:9px;flex-shrink:0;padding-left:16px;border-left:1px solid #e3eaf3}
+.top-account b{display:block;font-size:12px;color:#244061}
+.top-account small{display:block;font-size:11px;color:#61738d}
+.top-navigation-layout .register-page .page-header{background:transparent;border:0;margin:0 0 16px;padding:18px 0 0;min-height:auto}
+.top-navigation-layout .page:not(.register-page){padding-top:20px}
+.top-navigation-layout .skip-link{left:16px;z-index:30}
+@media(max-width:1150px){.top-navigation{gap:12px;padding-inline:16px;flex-wrap:wrap}.top-navigation nav{order:3;flex-basis:100%;flex-wrap:wrap}.top-navigation .top-account{margin-left:auto;border:0}.top-navigation details{margin-left:auto}}
+@media(max-width:600px){.top-navigation{position:relative;padding:10px 12px;gap:8px}.top-navigation .brand{width:122px}.top-navigation .top-account{padding-left:0;gap:6px}.top-account .avatar{display:none}.top-navigation nav{gap:3px}.top-navigation nav button,.top-navigation summary{font-size:12px;padding:8px;gap:5px}.top-navigation details{margin-left:0}.top-navigation .top-admin-menu{left:0;right:auto;max-width:calc(100vw - 24px)}.top-navigation .top-account .icon-button{width:30px}}
