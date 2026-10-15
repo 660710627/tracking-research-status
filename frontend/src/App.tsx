@@ -1,3 +1,7 @@
+import ResearchTrash from './RecycleBinPage'
+import { trashResearch, restoreResearch } from './researchTrash'
+import type { TrashedResearch } from './researchTrash'
+import type { ReactNode } from 'react'
 import './topNavigation.css'
 import { demoResearcher, visibleResearches, changeOwnAbstracts } from './researchVisibility'
 import { emptyResearchFilters, filterResearches } from './researchFilters'
@@ -29,7 +33,7 @@ import type { AccountDecision, AccountDraft, DemoAccount } from './approvalDemo'
 import { academicTitlesDemo, addAcademicTitle, deleteAcademicTitle, updateAcademicTitle } from './academicTitlesDemo'
 import type { AcademicTitle, AcademicTitleDraft } from './academicTitlesDemo'
 
-type View = 'overview' | 'list' | 'detail' | 'create' | AdminView
+type View = 'trash' | 'overview' | 'list' | 'detail' | 'create' | AdminView
 const processSteps = ['สัญญาโครงการ','บันทึกข้อตกลง','เปิดบัญชีธนาคาร','การเบิกจ่ายเงิน','การจัดสรรค่าธรรมเนียม','การติดตามส่งรายงาน','รายงานสรุปการใช้เงิน','การปิดบัญชีธนาคาร']
 import { seed } from './demoResearches'
 
@@ -76,14 +80,13 @@ function Sidebar({role,view,onView,onLogout}:{role:Role;view:View;onView:(v:View
     <nav aria-label="เมนูหลัก">
       <button className={view==='overview'?'active':''} aria-current={view==='overview'?'page':undefined} onClick={()=>navigate('overview')}><IconArchive aria-hidden="true"/>ภาพรวมงานวิจัย</button>
       <button className={view==='list'||view==='detail'?'active':''} aria-current={view==='list'||view==='detail'?'page':undefined} onClick={()=>navigate('list')}><IconFileDescription aria-hidden="true"/>รายการงานวิจัย</button>
-      {role!=='นักวิจัย'&&<button className={view==='create'?'active':''} aria-current={view==='create'?'page':undefined} onClick={()=>navigate('create')}><IconPlus aria-hidden="true"/>เพิ่มงานวิจัย</button>}
-      {role==='ผู้ดูแลระบบ'&&<details ref={adminMenu} data-active={adminModules.some(module=>module.id===view)} onKeyDown={event=>{if(event.key==='Escape'){event.currentTarget.open=false;event.currentTarget.querySelector('summary')?.focus()}}}><summary>ระบบจัดการข้อมูลพื้นฐาน <IconChevronDown aria-hidden="true"/></summary><div className="top-admin-menu">{adminModules.map((module,index)=>{const MenuIcon=menuIcons[index]??IconFileDescription;return <button key={module.id} className={view===module.id?'active':''} aria-current={view===module.id?'page':undefined} onClick={()=>navigate(module.id)}><MenuIcon aria-hidden="true"/>{module.title}</button>})}</div></details>}
+      {canManageResearch(role)&&<details ref={adminMenu} data-active={view==='trash'||adminModules.some(module=>module.id===view)} onKeyDown={event=>{if(event.key==='Escape'){event.currentTarget.open=false;event.currentTarget.querySelector('summary')?.focus()}}}><summary>ระบบจัดการข้อมูลพื้นฐาน <IconChevronDown aria-hidden="true"/></summary><div className="top-admin-menu">{role!=='ผู้ดูแลระบบ'&&<button className={view==='trash'?'active':''} aria-current={view==='trash'?'page':undefined} onClick={()=>navigate('trash')}><IconTrash aria-hidden="true"/>ถังขยะ</button>}{role==='ผู้ดูแลระบบ'&&adminModules.map((module,index)=>{const MenuIcon=menuIcons[index]??IconFileDescription;return [<button key={module.id} className={view===module.id?'active':''} aria-current={view===module.id?'page':undefined} onClick={()=>navigate(module.id)}><MenuIcon aria-hidden="true"/>{module.title}</button>,module.id==='academic-titles'?<button key="trash" className={view==='trash'?'active':''} aria-current={view==='trash'?'page':undefined} onClick={()=>navigate('trash')}><IconTrash aria-hidden="true"/>ถังขยะ</button>:null]})}</div></details>}
     </nav>
     <div className="top-account"><span className="avatar">{role.charAt(0)}</span><div><b>กมลชนก สาธิต</b><small>{role}</small></div><button className="icon-button" aria-label="ออกจากระบบ" onClick={onLogout}><IconLogout size={16} aria-hidden="true"/></button></div>
   </header>
 }
-function Header({title,subtitle}:{title:string;subtitle:string}) {
-  return <header className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className="header-actions"><span className="prototype-pill">Prototype</span></div></header>
+function Header({title,subtitle,actions}:{title:string;subtitle:string;actions?:ReactNode}) {
+  return <header className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className={actions!==undefined?'header-actions project-header-actions':'header-actions'}>{actions??<span className="prototype-pill">Prototype</span>}</div></header>
 }
 
 function ResearchOverview({items}:{items:Research[]}) {
@@ -124,10 +127,9 @@ function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items
   const toggleAll=()=>setSelectedIds(allSelected?[]:selectable.map(item=>item.id))
   const toggleItem=(id:number)=>setSelectedIds(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id])
   return <main className="page register-page">
-    <Header title="ทะเบียนงานวิจัย" subtitle="ติดตามทุกโครงการจากสัญญาถึงการปิดบัญชี"/>
-    <section className="register">
-      <div className="register-head"><div><h2>รายการโครงการ</h2></div></div>
-      <details className="research-filter-panel" open>
+    <Header title="รายการงานวิจัย" subtitle="ติดตามทุกโครงการจากสัญญาถึงการปิดบัญชี"/>
+
+      <details className="research-filter-panel joined-filter" open>
         <summary><span className="research-filter-heading"><span className="research-filter-icon"><IconSearch size={20} aria-hidden="true"/></span>ค้นหาและกรองงานวิจัย</span><span className="research-filter-toggle"><IconChevronDown size={18} aria-hidden="true"/></span></summary>
         <form className="research-filter-form" onSubmit={event=>{event.preventDefault();setAppliedFilters({...draftFilters});setPage(1);setSelectedIds([])}}>
           <div className="research-filter-column">
@@ -141,6 +143,7 @@ function ResearchList({items,onOpen,onCreate,canManage}:{canManage:boolean;items
           </div>
         </form>
       </details>
+    <section className="register joined-register">
       <details className="research-demo-tools"><summary>ตัวเลือกสถานะสาธิต</summary><label>สถานะสาธิต<select value={scenario} onChange={e=>setScenario(e.target.value as typeof scenario)}><option value="normal">ข้อมูลพร้อม</option><option value="loading">กำลังโหลด</option><option value="error">เกิดข้อผิดพลาด</option><option value="empty">ยังไม่มีข้อมูล</option></select></label></details>
       <div className="research-table-controls">
         <div className="research-selection-actions">
@@ -199,9 +202,10 @@ function Detail({research,onBack,onChange,onSaveSdgs,onSaveAbstracts,canManage}:
     if(!message)setDraft(null)
   }
   const [targetProcess,setTargetProcess]=useState('')
-  return <main className="page"><ResearchBreadcrumb current="รายละเอียดโครงการ" disabled={editing} onBack={onBack}/><Header title={research.title} subtitle={research.contract+' · '+research.kind}/>
+  return <main className="page"><ResearchBreadcrumb current="รายละเอียดโครงการ" disabled={editing} onBack={onBack}/><Header title={research.title} subtitle={research.contract+' · '+research.kind} actions={<>
     {!canManage&&<div className="research-toolbar">{editing?<><span className="editing-label" role="status">กำลังแก้ไขเฉพาะบทคัดย่อไทยและอังกฤษ</span><button className="secondary" onClick={cancelEdit}>ยกเลิกการแก้ไข</button><button className="primary" type="submit" form="research-edit-form">บันทึกบทคัดย่อ</button></>:<button ref={editButton} className="secondary" onClick={()=>{setDraft(researchDraft(research));setError('')}}>แก้ไขข้อมูล</button>}</div>}
     {canManage&&<div className="research-toolbar">{editing?<><span className="editing-label" role="status">กำลังแก้ไขข้อมูล</span><button className="secondary" onClick={cancelEdit}>ยกเลิกการแก้ไข</button><button className="primary" type="submit" form="research-edit-form">บันทึกการแก้ไข</button></>:<><button ref={editButton} className="secondary" onClick={()=>{setDraft(researchDraft(research));setError('')}}>แก้ไขงานวิจัย</button><button className="danger-outline" onClick={()=>setPending({type:'delete'})}>ลบงานวิจัย</button></>}</div>}
+    </>}/>
     {error&&<p ref={errorMessage} tabIndex={-1} className="notice" role="alert">{error}</p>}
     {pending&&<ConfirmResearch research={research} action={pending} onCancel={()=>setPending(null)} onConfirm={()=>{const message=onChange(pending);setPending(null);setError(message??'')}}/>}
     <div className="detail-grid research-detail"><div className="research-data"><ResearchSheet research={research} fields={fields} editing={editing} abstractsOnly={!canManage} onFields={setDraft} onSave={saveEdit} onCancel={cancelEdit}/><SdgSection key={research.status} value={research.sdgs??[]} disabledReason={research.status==='ยุติโครงการ'?'งานวิจัยยุติแล้ว ไม่สามารถแก้ไข SDGs ได้':editing?'บันทึกหรือยกเลิกการแก้ไขข้อมูลโครงการก่อนแก้ไข SDGs':undefined} onSave={onSaveSdgs}/></div>
@@ -245,6 +249,7 @@ export default function App(){
     const sample=detailSamples[item.id]??{start:'1 ต.ค. 2569',collaborators:'ยังไม่ระบุ',fundingType:'ภายใน',fund:'ทุนอุดหนุนการวิจัย (ข้อมูลสาธิต)',thai:'ข้อมูลบทคัดย่อสำหรับโครงการตัวอย่าง',english:'Demo research project abstract.',objectives:['ศึกษาวิจัยและพัฒนาต้นแบบ'],keywords:[item.title]}
     return {...item,sdgs:item.sdgs??({101:[6,12],102:[6,9],103:[8,11],104:[11]} as Record<number,number[]>)[item.id],projectType:'งานวิจัย',isSubsidized:true,budgetUnit:item.unit,startDate:sample.start,collaborators:sample.collaborators,fundingType:sample.fundingType,fund:sample.fund,thai:sample.thai,english:sample.english,objectives:[...sample.objectives],keywords:[...sample.keywords],contractFile:null}
   }))
+  const [trash,setTrash]=useState<TrashedResearch[]>([])
   const [selected,setSelected]=useState(101)
   const [toast,setToast]=useState('')
   if(!role)return <Login onLogin={nextRole=>{setRole(nextRole);setView('list');setToast('')}}/>
@@ -253,10 +258,14 @@ export default function App(){
   const research=accessibleResearches.find(item=>item.id===selected)
   const change=(action:ResearchAction):string|null=>{
     try {
+      if(action.type==='delete'){
+        const next=trashResearch({items:researches,trash},selected,role,new Date().toISOString())
+        setResearches(next.items);setTrash(next.trash);setToast('ย้ายงานวิจัยไปถังขยะแล้ว');setView('list');return null
+      }
       const next=changeResearch(researches,selected,role,action)
       setResearches(next)
-      setToast(action.type==='delete'?'ลบงานวิจัยตัวอย่างแล้ว':action.type==='edit'?'บันทึกการแก้ไขแล้ว':action.type==='status'?'ปรับสถานะงานวิจัยแล้ว':'ปรับกระบวนการแล้ว')
-      if(action.type==='delete')setView('list')
+      setToast(action.type==='edit'?'บันทึกการแก้ไขแล้ว':action.type==='status'?'ปรับสถานะงานวิจัยแล้ว':'ปรับกระบวนการแล้ว')
+
       return null
     } catch(error) { return error instanceof Error?error.message:'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองอีกครั้ง' }
   }
@@ -300,6 +309,7 @@ export default function App(){
   const navigate=(next:View)=>{setView(next);setToast('')}
   return <div className="app-shell top-navigation-layout"><a className="skip-link" href="#main">ข้ามไปยังเนื้อหา</a><Sidebar role={role} view={view} onView={navigate} onLogout={()=>setRole(null)}/><div id="main" tabIndex={-1} className="content">
     {toast&&<div className="toast" role="status"><b>สำเร็จ</b>{toast}<button aria-label="ปิดข้อความ" onClick={()=>setToast('')}>×</button></div>}
+    {view==='trash'&&canManage&&<ResearchTrash items={trash} onRestore={id=>{try{const next=restoreResearch({items:researches,trash},id,role);setResearches(next.items);setTrash(next.trash);setToast('กู้คืนงานวิจัยแล้ว');return null}catch(error){return error instanceof Error?error.message:'ไม่สามารถกู้คืนได้'}}}/>}
     {view==='overview'&&<ResearchOverview items={accessibleResearches}/>}
     {view==='list'&&<ResearchList canManage={canManage} items={accessibleResearches} onOpen={id=>{if(accessibleResearches.some(item=>item.id===id)){setSelected(id);navigate('detail')}}} onCreate={()=>navigate('create')}/>}
     {view==='detail'&&!research&&<main className="page"><p role="alert">ไม่พบงานวิจัยหรือคุณไม่มีสิทธิ์เข้าถึง</p><button className="secondary" onClick={()=>navigate('list')}>กลับรายการงานวิจัย</button></main>}

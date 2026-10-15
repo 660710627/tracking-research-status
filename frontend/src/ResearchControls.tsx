@@ -32,7 +32,7 @@ export function ConfirmResearch({research,action,onCancel,onConfirm}:{research:R
     <p className="confirmation-project">{research.title}<small>{research.contract}</small></p>
     {action.type==='status'&&<dl className="change-summary"><div><dt>สถานะปัจจุบัน</dt><dd>{research.status}</dd></div><div><dt>สถานะใหม่</dt><dd>{action.status}</dd></div></dl>}
     {action.type==='process'&&<p>เปลี่ยนจากขั้นตอนที่ {research.process} เป็นขั้นตอนที่ {action.process}</p>}
-    <p className="confirmation-warning">{deleting?'งานวิจัยนี้จะถูกนำออกจากรายการข้อมูลตัวอย่าง การลบไม่สามารถเรียกคืนได้ในรอบสาธิตนี้':'ตรวจสอบข้อมูลก่อนยืนยัน สามารถปรับสถานะและกระบวนการย้อนกลับหรือเดินหน้าได้ภายหลัง'}</p>
+    <p className="confirmation-warning">{deleting?'งานวิจัยนี้จะถูกย้ายไปถังขยะ ผู้ดูแลระบบหรือผู้ประสานงานสามารถกู้คืนพร้อมข้อมูลเดิมได้':'ตรวจสอบข้อมูลก่อนยืนยัน สามารถปรับสถานะและกระบวนการย้อนกลับหรือเดินหน้าได้ภายหลัง'}</p>
     <div className="form-actions"><button data-cancel className="secondary" onClick={onCancel}>ยกเลิก</button><button className={deleting||(action.type==='status'&&action.status==='ยุติโครงการ')?'danger':'primary'} onClick={onConfirm}>{deleting?'ยืนยันการลบ':action.type==='status'&&action.status==='ยุติโครงการ'?'ยืนยันยุติโครงการ':'ยืนยันการเปลี่ยนแปลง'}</button></div>
   </Modal>
 }
