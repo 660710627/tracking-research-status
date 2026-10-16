@@ -339,6 +339,8 @@ th[aria-sort=ascending] .sort-indicator,th[aria-sort=descending] .sort-indicator
 .research-filter-panel{margin:0 18px 14px;border:1px solid #c9dfda;border-radius:8px;box-shadow:0 3px 10px #005e5612}
 .register-page>.joined-filter{width:100%;margin:0;background:#fff;border-radius:12px 12px 0 0;box-shadow:none}
 .register-page>.joined-register{margin-top:0;border-top:0;border-radius:0 0 15px 15px}
+.register-page>.joined-filter:not([open]){margin-bottom:16px;border-radius:12px}
+.register-page>.joined-filter:not([open])+.joined-register{border-top:1px solid var(--line);border-radius:15px}
 .research-filter-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;min-height:54px;padding:9px 14px;background:#006b60;color:#fff;font-size:14px;font-weight:600;cursor:pointer;border-radius:7px;transition:background-color .15s}
 .research-filter-panel>summary:hover{background:#00594f}
 .research-filter-panel>summary:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
