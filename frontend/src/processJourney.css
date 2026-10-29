@@ -1,0 +1,51 @@
+.journey .expandable-journey>li{gap:12px}
+.process-step-details{flex:1;min-width:0;padding:2px 0 12px}
+.process-step-details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;min-height:36px;border-radius:4px}
+.process-step-details>summary::-webkit-details-marker{display:none}
+.process-step-details>summary>b{flex:1}
+.process-step-details>summary>small{flex-basis:100%;margin:0 0 4px}
+.process-step-chevron{color:var(--muted);font-size:20px;line-height:1}
+.process-step-details[open]>summary .process-step-chevron{transform:rotate(180deg)}
+.process-step-details>summary:focus-visible{outline:2px solid #3266a8;outline-offset:3px}
+.process-step-content{background:#f5f8fb;border:1px solid var(--line);border-radius:6px;margin:6px 0 0;padding:10px;font-size:13px;overflow-wrap:anywhere}
+.process-step-content .process-subheading{font-weight:600;color:#245f58;margin:0 0 8px}
+.process-step-content ul{list-style:none;padding:0;margin:0}
+.journey .process-step-content li{display:block;min-height:0;padding:7px 9px;border-left:3px solid #cad4e0;margin-bottom:6px;background:#fff}
+.journey .process-step-content li:before{display:none}
+.journey .process-step-content li small{font-size:11px;color:#607087;margin-top:3px}
+.journey .process-step-content .subprocess-current{border-left-color:#3266a8;background:#eaf1fc;color:#204d8b}
+.journey .process-step-content .subprocess-recorded{border-left-color:#43877c;color:#245f58}
+.process-step-content .process-history{margin-top:8px}
+.process-step-content time{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.process-step-content p:not(.process-subheading){margin:6px 0;white-space:pre-wrap}
+.process-step-content ul+.process-subheading{border-top:1px solid var(--line);padding-top:10px;margin-top:12px}
+.research-detail .tracking-controls>.journey>ol.expandable-journey>li{flex:1 0 auto;min-height:max-content}.research-detail .tracking-controls>.journey>ol.expandable-journey{flex:1 0 auto}
+/* Keep SDGs in the left column's own flow when process details grow. */
+@media(min-width:761px){
+  .research-detail:not(:has(.sdg-editing))>.research-data{display:block;grid-column:1;grid-row:1;min-width:0}
+  .research-detail:not(:has(.sdg-editing))>.research-data>.sdg-section{margin-top:12px}
+  .research-detail:has(.sdg-editing)>.research-tracking{align-self:start}
+  .research-detail:has(.sdg-editing) .tracking-controls{height:auto}
+}
+@media(max-width:760px){
+  .research-detail:not(:has(.sdg-editing))>.research-data{display:block;grid-column:1;grid-row:1;min-width:0}
+  .research-detail:not(:has(.sdg-editing))>.research-data>.sdg-section{margin-top:12px}
+  .research-detail:not(:has(.sdg-editing))>.research-tracking{grid-row:2}
+}
+.detail-grid.research-detail>.research-tracking{align-self:start;align-content:start}
+.detail-grid.research-detail .tracking-controls{height:auto}
+.research-detail .tracking-controls>.journey>ol.expandable-journey{flex:0 0 auto}
+.research-detail .tracking-controls>.journey>ol.expandable-journey>li{flex:0 0 auto;min-height:46px}
+.research-detail .journey .journey-head{flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px}
+.journey-head .process-log-button{font-size:12px;margin-left:auto;padding:6px 8px}
+.confirmation.process-log{width:min(900px,calc(100vw - 24px))}
+.process-log table{width:100%;border-collapse:collapse;font-size:13px}
+.process-log th,.process-log td{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.process-log th{background:#e6f4f1;color:#245f58}
+.process-log td:first-child{min-width:145px}
+.process-log td small{display:block;color:var(--muted);margin-top:4px}
+.process-log td dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0;min-width:230px}
+.process-log td dt{color:var(--muted)}
+.process-log td dd{margin:0;overflow-wrap:anywhere}
+.process-log td p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.process-log-empty{padding:20px;background:#f5f8fb;text-align:center;color:var(--muted)}

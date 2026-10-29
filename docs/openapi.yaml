@@ -5,8 +5,13 @@ info:
   description: |
     API contract for the Tracking Research Status MVP.
 
-    This MVP operates in the administrator role only. Authentication and
-    multi-role permission enforcement are not implemented in this contract.
+    Authentication uses Bearer JWT access tokens issued by the university SSO.
+    The backend validates the token and maps the subject to a SQLite account
+    with role RESEARCHER, COORDINATOR, or ADMIN and account status PENDING,
+    APPROVED, or SUSPENDED. Protected operations enforce both status and role.
+    All approved roles may read research data; only COORDINATOR and ADMIN may
+    create, update, delete, or advance research. User administration, academic
+    title mutation, public-information mutation, and audit logs are ADMIN-only.
     Research IDs remain internal database/API references, including path IDs
     and continuationOfId. The UI does not display or search by ID; it uses
     contractNumber instead, while retaining title search as defined in SPEC.md.
@@ -23,7 +28,8 @@ info:
     Responses remain JSON and contain project data and PDF metadata, not file bytes.
     The UI prevents repeated submission and does not retry mutations automatically.
     General concurrent updates use last-successful-write-wins without entity versions.
-security: []
+security:
+  - bearerAuth: []
 servers:
   - url: /
 
@@ -32,10 +38,21 @@ tags:
     description: Service and database availability.
   - name: Researches
     description: Research records, status, and process.
+  - name: Authentication
+    description: University SSO identity and session operations.
+  - name: Users
+    description: Administrator-only account approval and management.
+  - name: AcademicTitles
+    description: Academic title lookup and administrator maintenance.
+  - name: PublicInformation
+    description: Published office information and administrator maintenance.
+  - name: AuditLogs
+    description: Administrator-only immutable change history.
 
 paths:
   /health:
     get:
+      security: []
       tags:
         - Health
       operationId: getHealth
@@ -53,6 +70,38 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      operationId: getCurrentUser
+      summary: Get the authenticated account
+      responses:
+        "200":
+          description: Authenticated account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: End the current authenticated session
+      responses:
+        "204":
+          description: Session ended.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/researches:
     get:
       tags:
@@ -60,10 +109,19 @@ paths:
       operationId: listResearches
       summary: List all researches
       description: |
-        Returns the shared research list sorted by title ascending and then by
-        ID ascending when titles are equal. An empty database returns `[]`.
-        This operation accepts neither a non-empty request body nor query
-        parameters.
+        Returns researches visible to the authenticated user. q searches title
+        and contract number; status and process are combined with q using AND.
+        An empty result returns `[]`.
+      parameters:
+        - name: q
+          in: query
+          schema: {type: string}
+        - name: status
+          in: query
+          schema: {$ref: "#/components/schemas/ResearchStatus"}
+        - name: process
+          in: query
+          schema: {$ref: "#/components/schemas/ResearchProcess"}
       responses:
         "200":
           description: The complete research list.
@@ -72,9 +130,11 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Research"
-        "400":
-          $ref: "#/components/responses/InvalidRequestBody"
+                  $ref: "#/components/schemas/ResearchSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountUnavailable"
         "422":
           $ref: "#/components/responses/ValidationError"
         "500":
@@ -125,6 +185,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenOrAccountUnavailable"
         "404":
           $ref: "#/components/responses/ContinuationNotFound"
         "409":
@@ -141,6 +205,28 @@ paths:
   /api/v1/researches/{id}:
     parameters:
       - $ref: "#/components/parameters/ResearchId"
+
+    get:
+      tags: [Researches]
+      operationId: getResearch
+      summary: Get research details
+      responses:
+        "200":
+          description: Complete research details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Research"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/ResearchNotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
     put:
       tags:
@@ -180,6 +266,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/ResearchNotFound"
         "409":
@@ -208,12 +298,41 @@ paths:
       responses:
         "204":
           description: The research was deleted successfully; the response has no body.
-        "400":
-          $ref: "#/components/responses/InvalidRequestBody"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/ResearchNotFound"
         "409":
           $ref: "#/components/responses/ResearchHasContinuations"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/researches/{id}/contract-file:
+    parameters:
+      - $ref: "#/components/parameters/ResearchId"
+    get:
+      tags: [Researches]
+      operationId: getResearchContractFile
+      summary: Download the research contract PDF
+      responses:
+        "200":
+          description: Contract PDF.
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/ResearchOrContractFileNotFound"
         "422":
           $ref: "#/components/responses/ValidationError"
         "500":
@@ -252,6 +371,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/InvalidJson"
         "404":
@@ -300,6 +423,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Research"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "400":
           $ref: "#/components/responses/InvalidJson"
         "404":
@@ -315,7 +442,216 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: List accounts (ADMIN only)
+      parameters:
+        - name: status
+          in: query
+          schema: {$ref: "#/components/schemas/AccountStatus"}
+      responses:
+        "200":
+          description: Account list.
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/User"}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/users/{id}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Get an account (ADMIN only)
+      responses:
+        "200":
+          description: Account details.
+          content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/UserNotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: Update an account (ADMIN only)
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdateUserRequest"}}}
+      responses:
+        "200":
+          description: Updated account.
+          content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}
+        "400": {$ref: "#/components/responses/InvalidJson"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/UserNotFound"}
+        "409": {$ref: "#/components/responses/EmailConflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/users/{id}/status:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    patch:
+      tags: [Users]
+      operationId: updateUserStatus
+      summary: Update account status (ADMIN only)
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/UpdateAccountStatusRequest"}}}
+      responses:
+        "200":
+          description: Updated account.
+          content: {application/json: {schema: {$ref: "#/components/schemas/User"}}}
+        "400": {$ref: "#/components/responses/InvalidJson"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/UserNotFound"}
+        "409": {$ref: "#/components/responses/AccountTransitionConflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/academic-titles:
+    get:
+      tags: [AcademicTitles]
+      operationId: listAcademicTitles
+      summary: List academic titles
+      responses:
+        "200":
+          description: Academic title list.
+          content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/AcademicTitle"}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "500": {$ref: "#/components/responses/InternalError"}
+    post:
+      tags: [AcademicTitles]
+      operationId: createAcademicTitle
+      summary: Create an academic title (ADMIN only)
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/AcademicTitleRequest"}}}
+      responses:
+        "201":
+          description: Created title.
+          content: {application/json: {schema: {$ref: "#/components/schemas/AcademicTitle"}}}
+        "400": {$ref: "#/components/responses/InvalidJson"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "409": {$ref: "#/components/responses/AcademicTitleConflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/academic-titles/{id}:
+    parameters:
+      - $ref: "#/components/parameters/AcademicTitleId"
+    patch:
+      tags: [AcademicTitles]
+      operationId: updateAcademicTitle
+      summary: Update an academic title (ADMIN only)
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: "#/components/schemas/AcademicTitleRequest"}}}
+      responses:
+        "200":
+          description: Updated title.
+          content: {application/json: {schema: {$ref: "#/components/schemas/AcademicTitle"}}}
+        "400": {$ref: "#/components/responses/InvalidJson"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/AcademicTitleNotFound"}
+        "409": {$ref: "#/components/responses/AcademicTitleConflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+    delete:
+      tags: [AcademicTitles]
+      operationId: deleteAcademicTitle
+      summary: Delete an academic title (ADMIN only)
+      responses:
+        "204": {description: Academic title deleted.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/AcademicTitleNotFound"}
+        "409": {$ref: "#/components/responses/AcademicTitleInUse"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/about:
+    get:
+      security: []
+      tags: [PublicInformation]
+      operationId: getAbout
+      summary: Get published about information
+      responses:
+        "200": {description: About information., content: {application/json: {schema: {$ref: "#/components/schemas/About"}}}}
+        "500": {$ref: "#/components/responses/InternalError"}
+    put:
+      tags: [PublicInformation]
+      operationId: updateAbout
+      summary: Update about information (ADMIN only)
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateAboutRequest"}}}}
+      responses:
+        "200": {description: Updated about information., content: {application/json: {schema: {$ref: "#/components/schemas/About"}}}}
+        "400": {$ref: "#/components/responses/InvalidJson"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/organization:
+    get:
+      security: []
+      tags: [PublicInformation]
+      operationId: getOrganization
+      summary: Get published organization information
+      responses:
+        "200": {description: Organization information., content: {application/json: {schema: {$ref: "#/components/schemas/Organization"}}}}
+        "500": {$ref: "#/components/responses/InternalError"}
+    put:
+      tags: [PublicInformation]
+      operationId: updateOrganization
+      summary: Update organization information (ADMIN only)
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/UpdateOrganizationRequest"}}}}
+      responses:
+        "200": {description: Updated organization information., content: {application/json: {schema: {$ref: "#/components/schemas/Organization"}}}}
+        "400": {$ref: "#/components/responses/InvalidJson"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
+  /api/v1/audit-logs:
+    get:
+      tags: [AuditLogs]
+      operationId: listAuditLogs
+      summary: List immutable audit events (ADMIN only)
+      parameters:
+        - {name: userId, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: researchId, in: query, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: action, in: query, schema: {type: string, minLength: 1}}
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+      responses:
+        "200": {description: Audit events., content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/AuditLog"}}}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+        "500": {$ref: "#/components/responses/InternalError"}
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token issued by the university SSO.
+
   parameters:
     ResearchId:
       name: id
@@ -324,6 +660,16 @@ components:
       description: Positive, immutable server-generated research ID.
       schema:
         $ref: "#/components/schemas/ResearchId"
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    AcademicTitleId:
+      name: id
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
 
   schemas:
     HealthResponse:
@@ -734,15 +1080,134 @@ components:
         - รายงานสรุปการใช้เงิน
         - การปิดบัญชีธนาคาร
 
+    ResearchSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, contractNumber, projectType, researchKind, continuationOfId, status, process]
+      properties:
+        id: {$ref: "#/components/schemas/ResearchId"}
+        title: {$ref: "#/components/schemas/ResearchTitle"}
+        contractNumber: {$ref: "#/components/schemas/ContractNumber"}
+        projectType: {$ref: "#/components/schemas/ProjectType"}
+        researchKind: {$ref: "#/components/schemas/ResearchKind"}
+        continuationOfId: {$ref: "#/components/schemas/NullableResearchId"}
+        status: {$ref: "#/components/schemas/ResearchStatus"}
+        process: {$ref: "#/components/schemas/ResearchProcess"}
+
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, academicTitleId, role, status]
+      properties:
+        id: {type: integer, format: int64, minimum: 1, readOnly: true}
+        name: {$ref: "#/components/schemas/ResearchText"}
+        email: {type: string, format: email, maxLength: 254}
+        academicTitleId:
+          type: [integer, "null"]
+          format: int64
+          minimum: 1
+        role: {$ref: "#/components/schemas/UserRole"}
+        status: {$ref: "#/components/schemas/AccountStatus"}
+
+    UpdateUserRequest:
+      type: object
+      additionalProperties: false
+      required: [name, email, academicTitleId, role]
+      properties:
+        name: {$ref: "#/components/schemas/ResearchText"}
+        email: {type: string, format: email, maxLength: 254}
+        academicTitleId:
+          type: [integer, "null"]
+          format: int64
+          minimum: 1
+        role: {$ref: "#/components/schemas/UserRole"}
+
+    UpdateAccountStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {$ref: "#/components/schemas/AccountStatus"}
+
+    UserRole:
+      type: string
+      enum: [RESEARCHER, COORDINATOR, ADMIN]
+
+    AccountStatus:
+      type: string
+      enum: [PENDING, APPROVED, SUSPENDED]
+
+    AcademicTitle:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: {type: integer, format: int64, minimum: 1, readOnly: true}
+        name: {$ref: "#/components/schemas/ResearchText"}
+
+    AcademicTitleRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {$ref: "#/components/schemas/ResearchText"}
+
+    About:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content: {$ref: "#/components/schemas/ResearchText"}
+
+    UpdateAboutRequest:
+      $ref: "#/components/schemas/About"
+
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [universityName, officeName, systemName, address]
+      properties:
+        universityName: {$ref: "#/components/schemas/ResearchText"}
+        officeName: {$ref: "#/components/schemas/ResearchText"}
+        systemName: {$ref: "#/components/schemas/ResearchText"}
+        address: {$ref: "#/components/schemas/ResearchText"}
+
+    UpdateOrganizationRequest:
+      $ref: "#/components/schemas/Organization"
+
+    AuditLog:
+      type: object
+      additionalProperties: false
+      required: [id, userId, action, targetType, targetId, occurredAt]
+      properties:
+        id: {type: integer, format: int64, minimum: 1, readOnly: true}
+        userId: {type: integer, format: int64, minimum: 1}
+        researchId:
+          type: [integer, "null"]
+          format: int64
+          minimum: 1
+        action: {type: string, minLength: 1}
+        targetType: {type: string, minLength: 1}
+        targetId: {type: integer, format: int64, minimum: 1}
+        occurredAt: {type: string, format: date-time}
+
     ErrorCode:
       type: string
       enum:
         - CONTINUATION_NOT_FOUND
+        - ACCOUNT_PENDING
+        - ACCOUNT_SUSPENDED
+        - ACADEMIC_TITLE_ALREADY_EXISTS
+        - ACADEMIC_TITLE_IN_USE
+        - ACADEMIC_TITLE_NOT_FOUND
         - CONTRACT_NUMBER_ALREADY_EXISTS
+        - CONTRACT_FILE_NOT_FOUND
+        - EMAIL_ALREADY_EXISTS
+        - FORBIDDEN
         - INTERNAL_ERROR
         - INVALID_JSON
         - INVALID_PROCESS_TRANSITION
-        - INVALID_REQUEST_BODY
+        - INVALID_ACCOUNT_TRANSITION
         - INVALID_STATUS_TRANSITION
         - METHOD_NOT_ALLOWED
         - PAYLOAD_TOO_LARGE
@@ -752,6 +1217,8 @@ components:
         - ROUTE_NOT_FOUND
         - SERVICE_UNAVAILABLE
         - TITLE_ALREADY_EXISTS
+        - UNAUTHORIZED
+        - USER_NOT_FOUND
         - UNSUPPORTED_MEDIA_TYPE
         - VALIDATION_ERROR
 
@@ -810,6 +1277,79 @@ components:
                 $ref: "#/components/schemas/FieldError"
 
   responses:
+    Unauthorized:
+      description: Bearer token is missing, invalid, or expired.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: UNAUTHORIZED, message: Authentication is required.}}
+    Forbidden:
+      description: The authenticated role cannot perform this operation.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: FORBIDDEN, message: Permission is denied.}}
+    AccountUnavailable:
+      description: The account is pending approval or suspended.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          examples:
+            pending: {value: {error: {code: ACCOUNT_PENDING, message: Account approval is pending.}}}
+            suspended: {value: {error: {code: ACCOUNT_SUSPENDED, message: Account is suspended.}}}
+    ForbiddenOrAccountUnavailable:
+      description: The role is forbidden or the account is pending/suspended.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          examples:
+            forbidden: {value: {error: {code: FORBIDDEN, message: Permission is denied.}}}
+            pending: {value: {error: {code: ACCOUNT_PENDING, message: Account approval is pending.}}}
+            suspended: {value: {error: {code: ACCOUNT_SUSPENDED, message: Account is suspended.}}}
+    UserNotFound:
+      description: No account has the supplied ID.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: USER_NOT_FOUND, message: User was not found.}}
+    EmailConflict:
+      description: Email is already assigned to another account.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: EMAIL_ALREADY_EXISTS, message: Email is already in use.}}
+    AccountTransitionConflict:
+      description: Requested account-status transition is invalid.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: INVALID_ACCOUNT_TRANSITION, message: Account status transition is invalid.}}
+    AcademicTitleNotFound:
+      description: No academic title has the supplied ID.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: ACADEMIC_TITLE_NOT_FOUND, message: Academic title was not found.}}
+    AcademicTitleConflict:
+      description: Academic title name already exists.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: ACADEMIC_TITLE_ALREADY_EXISTS, message: Academic title already exists.}}
+    AcademicTitleInUse:
+      description: Academic title is referenced by an account.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          example: {error: {code: ACADEMIC_TITLE_IN_USE, message: Academic title is in use.}}
+    ResearchOrContractFileNotFound:
+      description: Research or its contract file does not exist.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ErrorResponse"}
+          examples:
+            research: {value: {error: {code: RESEARCH_NOT_FOUND, message: Research was not found.}}}
+            file: {value: {error: {code: CONTRACT_FILE_NOT_FOUND, message: Contract file was not found.}}}
     ContinuationNotFound:
       description: continuationOfId does not reference an existing research.
       content:
@@ -844,17 +1384,6 @@ components:
             error:
               code: INVALID_JSON
               message: Request body must contain one valid JSON object.
-
-    InvalidRequestBody:
-      description: This operation does not accept a non-empty request body.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-          example:
-            error:
-              code: INVALID_REQUEST_BODY
-              message: This operation does not accept a request body.
 
     PayloadTooLarge:
       description: |
