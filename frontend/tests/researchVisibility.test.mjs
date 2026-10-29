@@ -11,15 +11,9 @@ test('researcher access uses membership email, never display name',()=>{
 })
 
 import {changeOwnAbstracts} from '../src/researchVisibility.ts'
-test('abstract edits require ownership and reject every other field',()=>{
+test('researchers cannot edit abstracts even on their own projects',()=>{
  const items=[{id:1,leader:{email:'a@example.com'},title:'Original',thai:'old',english:'old',sdgs:[1]},{id:2,leader:{email:'b@example.com'}}]
- const result=changeOwnAbstracts(items,1,'นักวิจัย','a@example.com',{thai:'ใหม่',english:'New'})
- assert.equal(result[0].thai,'ใหม่')
- assert.equal(result[0].english,'New')
- assert.equal(result[0].title,'Original')
- assert.deepEqual(result[0].sdgs,[1])
- assert.equal(items[0].thai,'old')
- assert.equal(result[1],items[1])
- assert.throws(()=>changeOwnAbstracts(items,2,'นักวิจัย','a@example.com',{thai:'x',english:'x'}))
- assert.throws(()=>changeOwnAbstracts(items,1,'นักวิจัย','a@example.com',{thai:'x',english:'x',title:'tampered'}))
+ const original=structuredClone(items)
+ for(const id of [1,2])assert.throws(()=>changeOwnAbstracts(items,id,'นักวิจัย','a@example.com',{thai:'ใหม่',english:'New'}),/เฉพาะ SDGs/)
+ assert.deepEqual(items,original)
 })

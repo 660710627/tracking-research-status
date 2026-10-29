@@ -1,17 +1,19 @@
+import { validateProcessDetails } from './processDemo.ts'
+import type { ProcessDetails } from './processDemo.ts'
 import type { ProjectMember } from './ProjectMemberPage'
 // In-memory demo behavior only. Production authorization belongs to the API/database.
 import { normalizeSdgs } from './sdgs.ts'
 export type Role = 'นักวิจัย' | 'ผู้ประสานงาน' | 'ผู้ดูแลระบบ'
 export const statuses = ['กำลังดำเนินการ', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 1)', 'กำลังดำเนินการ(ขยายเวลาครั้งที่ 2)', 'กำลังดำเนินการ(ขยายเวลามากกว่า 2 ครั้ง)', 'โครงการเสร็จสิ้น', 'ยุติโครงการ'] as const
 export type ResearchDetails = { projectType:string; isSubsidized:boolean; budgetUnit:string; startDate:string; collaborators:string; fundingType:string; fund:string; thai:string; english:string; objectives:string[]; keywords:string[]; contractFile:File|null }
-export type Research = { id:number; title:string; contract:string; lead:string; unit:string; budget:number; status:string; process:number; kind:string; endDate:string; sdgs?:number[]; leader?:ProjectMember; coResearchers?:ProjectMember[] } & Partial<ResearchDetails>
+export type Research = { id:number; title:string; contract:string; lead:string; unit:string; budget:number; status:string; process:number; kind:string; endDate:string; sdgs?:number[]; leader?:ProjectMember; coResearchers?:ProjectMember[]; processDetails?:ProcessDetails; processHistory?:(ProcessDetails & {process:number;recordedAt:string;fromProcess?:number;changedBy?:string;changedRole?:Role})[] } & Partial<ResearchDetails>
 export type ResearchFields = Pick<Research, 'title' | 'contract' | 'lead' | 'unit' | 'budget' | 'endDate'> & Partial<ResearchDetails>
 export type ResearchDraft = ResearchFields & ResearchDetails
 export function researchDraft(research:Research):ResearchDraft {
   return {title:research.title,contract:research.contract,lead:research.lead,unit:research.unit,budget:research.budget,endDate:research.endDate,
     projectType:research.projectType??'งานวิจัย',isSubsidized:research.isSubsidized??true,budgetUnit:research.budgetUnit??research.unit,startDate:research.startDate??'',collaborators:research.collaborators??'',fundingType:research.fundingType??'ภายใน',fund:research.fund??'',thai:research.thai??'',english:research.english??'',objectives:[...(research.objectives??[])],keywords:[...(research.keywords??[])],contractFile:research.contractFile??null}
 }
-export type ResearchAction = {type:'status'; status:string} | {type:'process'; process:number} | {type:'edit'; fields:ResearchFields} | {type:'delete'}
+export type ResearchAction = {type:'status'; status:string} | {type:'process'; process:number; details?:ProcessDetails} | {type:'edit'; fields:ResearchFields} | {type:'delete'}
 export const canManageResearch = (role:Role) => role === 'ผู้ประสานงาน' || role === 'ผู้ดูแลระบบ'
 export const isTerminal = (status:string) => status === statuses[4] || status === statuses[5]
 export function changeResearchSdgs(items:Research[],id:number,role:Role,ids:number[]):Research[] {
@@ -26,7 +28,7 @@ export function nextStatuses(status:string) {
   const index = statuses.findIndex(value => value === status)
   return index < 0 ? [] : statuses.filter(value => value !== status)
 }
-export function changeResearch(items:Research[], id:number, role:Role, action:ResearchAction):Research[] {
+export function changeResearch(items:Research[], id:number, role:Role, action:ResearchAction, actorName='บัญชีสาธิต'):Research[] {
   if (!canManageResearch(role)) throw new Error('คุณไม่มีสิทธิ์จัดการงานวิจัย')
   const current = items.find(item => item.id === id)
   if (!current) throw new Error('ไม่พบงานวิจัยที่เลือก กรุณากลับไปยังรายการ')
@@ -37,7 +39,8 @@ export function changeResearch(items:Research[], id:number, role:Role, action:Re
     updated = {...current, status:action.status}
   } else if (action.type === 'process') {
     if (!Number.isInteger(action.process) || action.process < 1 || action.process > 8 || action.process === current.process) throw new Error('ไม่สามารถปรับกระบวนการนี้ได้')
-    updated = {...current, process:action.process}
+    if(action.details)validateProcessDetails(action.process,action.details)
+    updated = {...current, process:action.process,...(action.details?{processDetails:{...action.details,note:action.details.note.trim()},processHistory:[...(current.processHistory??[]),{...action.details,note:action.details.note.trim(),process:action.process,fromProcess:current.process,changedBy:actorName,changedRole:role,recordedAt:new Date().toISOString()}]}:current.processDetails?{processDetails:undefined}:{})}
   } else {
     const {title, contract, lead, unit, budget, endDate} = action.fields
     if (![title, contract, lead, unit, endDate].every(value => value.trim()) || !Number.isFinite(budget) || budget <= 0) throw new Error('กรอกข้อมูลให้ครบและระบุงบประมาณมากกว่า 0 บาท')

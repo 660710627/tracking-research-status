@@ -1,0 +1,13 @@
+.confirmation.process-picker{width:min(500px,calc(100vw - 24px));padding:20px}
+.process-picker h2{font-size:19px;margin:-20px -20px 16px;padding:16px 20px;background:#23675f;color:#fff;border-bottom:3px solid #83b8ae}
+.process-current{margin:0 0 16px;padding:12px 14px;background:#edf3ff;border:1px solid #c7d8f2;border-left:4px solid #3266a8;border-radius:6px;color:#365b86;font-size:13px}
+.process-current strong{display:block;color:#183e70;font-size:16px;margin-top:4px;font-weight:700}
+.process-field{display:grid;gap:8px;font-weight:600;margin-top:16px;color:#245f58}
+.process-field select,.process-field textarea,.process-field input{width:100%;font-weight:400;min-width:0;color:var(--ink);background:#fff}
+.process-field textarea{resize:vertical;min-height:96px}
+.process-field option.current-process-option{background:#dceaff;color:#183e70;font-weight:700}
+.process-expanded{border-left:3px solid #43877c;padding-left:14px}
+.process-field select:focus-visible,.process-field textarea:focus-visible,.process-field input:focus-visible{outline:2px solid #3266a8;outline-offset:2px}
+.process-expanded .helper-text{display:block;margin-top:8px}
+.process-picker .form-actions{margin-top:16px;padding-top:12px}
+.process-saved{border-top:1px solid var(--line);padding:12px 0;font-size:14px;overflow-wrap:anywhere}.process-saved p{margin:6px 0;white-space:pre-wrap}
